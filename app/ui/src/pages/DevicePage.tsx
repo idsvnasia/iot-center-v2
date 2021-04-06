@@ -148,7 +148,7 @@ async function writeEmulatedData(
     const batchSize = 2000
     const url = kafka_write_enabled ? '/kafka' : '/influx'
     const influxDB = new InfluxDB({url, token})
-    const writeApi = influxDB.getWriteApi(org, bucket, 'ms', {
+    const writeApi = influxDB.getWriteApi(org, bucket, 'ns', {
       batchSize: batchSize + 1,
       defaultTags: {clientId: id},
     })
@@ -173,7 +173,7 @@ async function writeEmulatedData(
           .tag('CO2Sensor', 'virtual_CO2Sensor')
           .tag('TVOCSensor', 'virtual_TVOCSensor')
           .tag('GPSSensor', 'virtual_GPSSensor')
-          .timestamp(lastTime)
+          .timestamp(String(lastTime) + '000000')
         writeApi.writePoint(point)
 
         pointsWritten++
