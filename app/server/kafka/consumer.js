@@ -1,7 +1,7 @@
 const {KAFKA_HOST, KAFKA_TOPIC} = require('../env')
 const {Kafka} = require('kafkajs')
 
-// create kafka producer
+// create kafka consumer
 let kafka
 if (KAFKA_HOST && KAFKA_TOPIC) {
   console.log('Initializing Kafka client')
