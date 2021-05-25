@@ -47,10 +47,10 @@ function logEnvironment() {
     console.log(`MQTT_URL=${MQTT_URL}`)
   }
   if (MQTT_TOPIC) {
-    console.log(`KAFKA_TOPIC=${MQTT_TOPIC}`)
+    console.log(`MQTT_TOPIC=${MQTT_TOPIC}`)
   }
   if (MQTT_USERNAME) {
-    console.log(`KAFKA_TOPIC=${MQTT_USERNAME}`)
+    console.log(`MQTT_USERNAME=${MQTT_USERNAME}`)
   }
 }
 
