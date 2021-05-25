@@ -27,6 +27,7 @@ async function mqttRouter() {
     res.status(204)
     res.end()
   })
+  return router
 }
 
 module.exports = mqttRouter
