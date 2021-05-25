@@ -22,7 +22,7 @@ const MQTT_USERNAME = process.env.MQTT_USERNAME
 const MQTT_PASSWORD = process.env.MQTT_PASSWORD
 const MQTT_OPTIONS_DEFAULT = '{"connectTimeout":10000}'
 /** optional JSON encoded MQTT options, see https://github.com/mqttjs/MQTT.js#client */
-const MQTT_OPTIONS = process.env.MQTT_OPTIONS | MQTT_OPTIONS_DEFAULT
+const MQTT_OPTIONS = process.env.MQTT_OPTIONS || MQTT_OPTIONS_DEFAULT
 
 // Defaults when on boarding a fresh new InfluxDB instance
 /** InfluxDB user  */
@@ -52,6 +52,9 @@ function logEnvironment() {
   }
   if (MQTT_USERNAME) {
     console.log(`MQTT_USERNAME=${MQTT_USERNAME}`)
+  }
+  if (MQTT_URL) {
+    console.log(`MQTT_OPTIONS=${MQTT_OPTIONS}`)
   }
 }
 
