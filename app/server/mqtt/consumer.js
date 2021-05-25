@@ -16,8 +16,6 @@ if (MQTT_URL && MQTT_TOPIC) {
       } catch (error) {
         console.error('ERROR: MQTT finalization failed', error)
       }
-      // eslint-disable-next-line no-process-exit
-      process.exit(0)
     }
     process.on('SIGINT', onShutdown)
     process.on('SIGTERM', onShutdown)

@@ -50,8 +50,6 @@ async function onShutdown() {
   } catch (error) {
     console.error('ERROR: Application monitoring', error)
   }
-  // eslint-disable-next-line no-process-exit
-  process.exit(0)
 }
 process.on('SIGINT', onShutdown)
 process.on('SIGTERM', onShutdown)

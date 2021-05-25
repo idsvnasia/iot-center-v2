@@ -7,13 +7,9 @@ const kafka = require('./kafka')
 const mqtt = require('./mqtt')
 const onboardInfluxDB = require('./influxdb/onboarding')
 const {logEnvironment, INFLUX_URL} = require('./env')
-const monitor = require('./monitor')
 
 async function startApplication() {
   const app = express()
-
-  // monitor application
-  monitor(app)
 
   // APIs
   app.use('/api', apis)
@@ -23,6 +19,9 @@ async function startApplication() {
 
   // MQTT write
   app.use('/mqtt', await mqtt())
+
+  // monitor application
+  require('./monitor')(app)
 
   // start proxy to InfluxDB to avoid CORS blocking with InfluXDB OSS v2 Beta
   app.use('/influx', proxy(INFLUX_URL))
@@ -48,5 +47,7 @@ async function startApplication() {
 }
 
 startApplication().catch((e) => {
-  console.error('Failed to start', e)
+  console.error('Failed to start: ', e)
+  process.exitCode = 1
+  process.kill(process.pid, 'SIGTERM')
 })
