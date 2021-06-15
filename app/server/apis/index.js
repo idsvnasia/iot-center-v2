@@ -19,6 +19,16 @@ function handleError(wrapped) {
   }
 }
 
+function getDefaultWriteEndpoint() {
+  if (env.KAFKA_HOST && env.KAFKA_TOPIC) {
+    return '/kafka'
+  }
+  if (env.MQTT_URL && env.MQTT_TOPIC) {
+    return '/mqtt'
+  }
+  return '/influx'
+}
+
 // send simple response in text/plain when requested (arduino)
 router.use(function responseTextInPlaceOfJson(req, res, next) {
   if (
@@ -72,7 +82,7 @@ router.get(
       updatedAt: authorization.updatedAt,
       serverTime: new Date().toISOString(),
       configuration_refresh: env.configuration_refresh,
-      kafka_write_enabled: !!(env.KAFKA_HOST && env.KAFKA_TOPIC),
+      write_endpoint: getDefaultWriteEndpoint(),
     }
     res.json(result)
   })

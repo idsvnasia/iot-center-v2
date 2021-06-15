@@ -36,13 +36,7 @@ function writeProcessUsage() {
     )
   }
 }
-// write process usage now and then every 10 seconds
-writeProcessUsage()
-const nodeUsageTimer = setInterval(writeProcessUsage, 10000).unref()
-
-// on shutdown
-// - clear reporting of node usage
-// - flush unwritten points and cancel retries
+let nodeUsageTimer
 async function onShutdown() {
   clearInterval(nodeUsageTimer)
   try {
@@ -50,14 +44,24 @@ async function onShutdown() {
   } catch (error) {
     console.error('ERROR: Application monitoring', error)
   }
-  // eslint-disable-next-line no-process-exit
-  process.exit(0)
 }
-process.on('SIGINT', onShutdown)
-process.on('SIGTERM', onShutdown)
 
-// export a monitoring function for express.js response time monitoring
-module.exports = function (app) {
+// write process usage now and then every 10 seconds
+function startProcessMonitoring() {
+  if (!nodeUsageTimer) {
+    writeProcessUsage()
+    nodeUsageTimer = setInterval(writeProcessUsage, 10000).unref()
+    // on shutdown
+    // - clear reporting of node usage
+    // - flush unwritten points and cancel retries
+    process.on('SIGINT', onShutdown)
+    process.on('SIGTERM', onShutdown)
+  }
+}
+
+// monitoring function for express.js response time monitoring
+// @param app - express application
+function monitorResponseTime(app) {
   app.use(
     responseTime((req, res, time) => {
       // print out request basics
@@ -75,4 +79,9 @@ module.exports = function (app) {
       writeAPI.writePoint(point)
     })
   )
+}
+
+module.exports = {
+  startProcessMonitoring,
+  monitorResponseTime,
 }
