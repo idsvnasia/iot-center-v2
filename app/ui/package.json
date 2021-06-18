@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@ant-design/icons": "^4.2.2",
+    "@craco/craco": "5.8.0",
     "@influxdata/giraffe": "^0.37.0",
     "@influxdata/influxdb-client": "^1.13.0",
     "@influxdata/influxdb-client-apis": "^1.13.0",
@@ -29,9 +30,9 @@
     "typescript": "~3.7.2"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "yarn lint && react-scripts test",
+    "start": "craco start",
+    "build": "craco build",
+    "test": "yarn lint && craco test",
     "lint": "eslint src/**/*.ts{,x}"
   },
   "eslintConfig": {
