@@ -83,6 +83,15 @@ router.get(
       serverTime: new Date().toISOString(),
       configuration_refresh: env.configuration_refresh,
       write_endpoint: getDefaultWriteEndpoint(),
+
+      kafka_url: env.KAFKA_HOST,
+      kafka_topic: env.KAFKA_TOPIC,
+
+      mqtt_url: env.MQTT_URL,
+      mqtt_topic: env.MQTT_TOPIC,
+      mqtt_user: env.MQTT_USERNAME,
+      mqtt_password: env.MQTT_PASSWORD,
+      mqtt_options: env.MQTT_OPTIONS,
     }
     res.json(result)
   })
