@@ -1,53 +1,58 @@
-// Set device UUID - use generator e.g. https://www.uuidgenerator.net/version4
-#define DEVICE_UUID "00000000-0000-0000-0000-000000000000"
 // Set WiFi AP SSID
 #define WIFI_SSID "SSID"
 // Set WiFi password
 #define WIFI_PASSWORD "PASSWORD"
 // Set IoT Center URL - set URL where IoT Center registration API is running
-#define IOT_CENTER_URL "http://IP:5000/api/env/"
+#define IOT_CENTER_URL "http://IP:5000"
 
-//#define MEMORY_DEBUG    //Uncomment if you want to debug memory usage
-#define WRITE_PRECISION WritePrecision::S
-#define MAX_BATCH_SIZE 2
-#define WRITE_BUFFER_SIZE 2
+#define VERSION "0.50"
+#define MEMORY_DEBUG    //Uncomment if you want to debug memory usage
 #define DEFAULT_CONFIG_REFRESH 3600
 #define DEFAULT_MEASUREMENT_INTERVAL 60
 #define MIN_FREE_MEMORY 15000   //memory leaks prevention
 
 #if defined(ESP32)
-  #include <WiFiMulti.h>
-  WiFiMulti wifiMulti;
+  #include <ESP32WiFi.h>
   #define DEVICE "ESP32"
 #elif defined(ESP8266)
-  #include <ESP8266WiFiMulti.h>
-  ESP8266WiFiMulti wifiMulti;
+  #include <ESP8266WiFi.h>
+  #include <ESP8266HTTPClient.h>
   #define DEVICE "ESP8266"
   #define WIFI_AUTH_OPEN ENC_TYPE_NONE
 #endif
 
-#include <InfluxDbClient.h>   //InfluxDB client for Arduino
-#include <InfluxDbCloud.h>    //For Influx Cloud support
-#include "mirek.h" //Remove or comment it out
+#include "custom_dev.h" //Custom development configuration - remove or comment it out 
+#include "cbuffer.h"
 
-#define IOT_CENTER_DEVICE_URL IOT_CENTER_URL DEVICE_UUID
 #define xstr(s) str(s)
 #define str(s) #s
 
+#if defined(MEMORY_DEBUG)
+void printHeapInfluxDB( const char* location);
+#define printHeap(s) printHeapInfluxDB(s)
+#else
+#define printHeap(s)
+#endif
 
 //Simple circular buffer to store measured values when offline
-#include "cbuffer.h"
 CircularBuffer mBuff;
+String deviceID;
+enum {i_influxdb, i_kafka, i_mqtt} dataIntf;
 
-extern String tempSens, humSens, presSens, co2Sens, tvocSens, gpsSens;
-extern void setupSensors();
-extern void readSensors( tMeasurement* ppm);
-double defaultLatitude(NAN), defaultLongitude(NAN);
+//declarations from other files
+void setupSensors();
+void readSensors( tMeasurement* ppm);
+void initInfluxDB( const String& url, const String& org, const String& bucket, const String& token, const String& deviceID, const char* device, const char* version, bool connectionReuse);
+void setMeasurement( tMeasurement* ppm);
+String getMeasurementStr();
+bool writeInfluxDB();
+bool readyInfluxDB();
+void initMQTT( const char* url, const String& topic, const String& user, const String& passowrd, const String& options);
+bool readyMQTT();
+bool writeMQTT( const String& data);
+float defaultLatitude(NAN), defaultLongitude(NAN);
 
-// InfluxDB client
-InfluxDBClient client;
-// Data point
-Point envData("environment");
+
 // How often the device should read configuration in seconds
 int configRefresh = DEFAULT_CONFIG_REFRESH;
 // How often the device should transmit measurements in seconds
@@ -66,40 +71,43 @@ String loadParameter( const String& response, const char* param) {
   return response.substring( response.indexOf(":", i) + 2, response.indexOf("\n", i));
 }
 
-//Convert IP address into String
-String IpAddress2String(const IPAddress& ipAddress) {
-  return String(ipAddress[0]) + String(".") + String(ipAddress[1]) + String(".") + String(ipAddress[2]) + String(".") + String(ipAddress[3]);
-}
+WiFiClient wifi_client;
+HTTPClient http_config;
+
 
 //Load configuration from IoT Center
-HTTPClient http_config;
 void configSync() {
 /*
-<<<<<<< HEAD
-Response example:
-influx_url: http://localhost:9999
-=======
 Example response:
-influx_url: http://localhost:8086
->>>>>>> 931a1fce76be327cd840b1cbf887b6fba488d9d6
-influx_org: my-org
-influx_token: x0102CguGaU7qoJWftHUTV5wk5J-s6pZ_4WAIQjAmqU91EXxSKh4Am1p8URyNx9nfeU9TuGMtFUH85crAHO1Is==
+nflux_url: https://us-west-2-1.aws.cloud2.influxdata.com
+influx_org: iot-center-workshop@bonitoo.io
+influx_token: YzgCfIlA9CHeEnVTvKqqvtatq9Y-oF7RIyYnY8Hu9OV1q8yZlxszXk9NZMQr7Om5xh9RjH4FtrtkVR-_sLVxqz==
 influx_bucket: iot_center
-id: 857b4466-2bbb-48e5-9f51-d3eef385e4a8
+id: ESP8266-5CCF7F1DC2E5
 default_lon: 14.4071543
 default_lat: 50.0873254
 measurement_interval: 60
 newlyRegistered: false
-createdAt: 2020-09-15T12:40:12.4796108+02:00
-updatedAt: 2020-09-15T12:40:12.4796108+02:00
-serverTime: 2020-09-15T12:19:17.319Z
+createdAt: 2021-06-17T12:02:49.144583231Z
+updatedAt: 2021-06-17T12:02:49.144583231Z
+serverTime: 2021-06-18T09:30:56.495Z
 configuration_refresh: 3600
+write_endpoint: /mqtt
+kafka_url: null
+kafka_topic: null
+mqtt_url: mqtt://test.mosquitto.org
+mqtt_topic: iot_center
+mqtt_user: null
+mqtt_password: null
+mqtt_options: '{"connectTimeout":10000}'
 */
+ 
   // Load config from IoT Center
   String payload;
-  Serial.println("Connecting " IOT_CENTER_DEVICE_URL);
-  http_config.begin( IOT_CENTER_DEVICE_URL);
-  http_config.addHeader("Accept", "text/plain");
+  String url = IOT_CENTER_URL + String(F("/api/env/")) + deviceID;
+  Serial.println("Connecting " + url);
+  http_config.begin( wifi_client, url);
+  http_config.addHeader(F("Accept"), F("text/plain"));
   int httpCode = http_config.GET();
   if (httpCode == HTTP_CODE_OK) {
     payload = http_config.getString();
@@ -107,7 +115,7 @@ configuration_refresh: 3600
     Serial.print(payload);
     Serial.println("--end");
   } else {
-    Serial.print("[HTTP] GET failed, error: ");
+    Serial.print("Config GET failed, error: ");
     Serial.println( http_config.errorToString(httpCode).c_str());
   }
   http_config.end();
@@ -118,7 +126,8 @@ configuration_refresh: 3600
     //Sync time from IoT Cenetr
     String iotTime = loadParameter( payload, "serverTime");
     tm tmServer;
-    strptime(iotTime.c_str(), "%Y-%m-%dT%H:%M:%S.%f", &tmServer);
+    int ms;
+    sscanf( iotTime.c_str(), "%d-%d-%dT%d:%d:%d.%dZ", &tmServer.tm_year, &tmServer.tm_mon, &tmServer.tm_mday, &tmServer.tm_hour, &tmServer.tm_min, &tmServer.tm_sec, &ms);
     time_t ttServer = mktime(&tmServer);
     struct timeval tvServer = { .tv_sec = ttServer };
     settimeofday(&tvServer, NULL);
@@ -127,15 +136,6 @@ configuration_refresh: 3600
     ttServer = time(nullptr);
     Serial.print("Set time: ");
     Serial.print(String(ctime(&ttServer)));
-
-    //Load InfluxDB parameters
-    String influxdbURL = loadParameter( payload, "influx_url");
-    String influxdbOrg = loadParameter( payload, "influx_org");
-    String influxdbToken = loadParameter( payload, "influx_token");
-    String influxdbBucket = loadParameter( payload, "influx_bucket");
-
-    // Set InfluxDB parameters
-    client.setConnectionParams(influxdbURL.c_str(), influxdbOrg.c_str(), influxdbBucket.c_str(), influxdbToken.c_str(), InfluxDbCloud2CACert);
 
     //Load refresh parameters
     measurementInterval = loadParameter( payload, "measurement_interval").toInt();
@@ -148,103 +148,37 @@ configuration_refresh: 3600
       configRefresh = DEFAULT_CONFIG_REFRESH;
     //Serial.println(configRefresh);
 
-    //Enable messages batching and retry buffer
-    WriteOptions wrOpt;
-    wrOpt.writePrecision( WRITE_PRECISION).batchSize( MAX_BATCH_SIZE).bufferSize( WRITE_BUFFER_SIZE).addDefaultTag( "clientId", DEVICE_UUID).addDefaultTag( "Device", DEVICE);
-    client.setWriteOptions(wrOpt);
-
-    HTTPOptions htOpt;
-    htOpt.connectionReuse(measurementInterval <= 20);
-    client.setHTTPOptions(htOpt);
-
-    // Check InfluxDB server connection
-    if (client.validateConnection()) {
-      Serial.print("Connected to InfluxDB: ");
-      Serial.println(client.getServerUrl());
-    } else {
-      Serial.print("InfluxDB connection failed: ");
-      Serial.println(client.getLastErrorMessage());
-    }
-
     defaultLatitude = loadParameter( payload, "default_lat").toDouble();
     defaultLongitude = loadParameter( payload, "default_lon").toDouble();
-  } else {
-    Serial.println("[HTTP] GET failed, emty response");
-  }
+
+    //Initialize InfluxDB and MQTT connection
+    String endpoint = loadParameter( payload, "write_endpoint");
+    
+    if (endpoint == "/influx")
+      dataIntf = i_influxdb;
+    else
+    if ( endpoint == "/kafka")
+      dataIntf = i_kafka;
+    else
+    if ( endpoint == "/mqtt")
+      dataIntf = i_mqtt;
+     
+    if ( dataIntf == i_influxdb || dataIntf == i_kafka) //for both influx and kafka, use direct InfluxDB connection
+      initInfluxDB( loadParameter( payload, "influx_url"), loadParameter( payload, "influx_org"), loadParameter( payload, "influx_bucket"), loadParameter( payload, "influx_token"), deviceID, DEVICE, VERSION, measurementInterval <= 60);
+    if ( dataIntf == i_mqtt)
+      initMQTT( loadParameter( payload, "mqtt_url").c_str(), loadParameter( payload, "mqtt_topic"), loadParameter( payload, "mqtt_user"), loadParameter( payload, "mqtt_password"), loadParameter( payload, "mqtt_options"));
+  } else
+    Serial.println("Config GET failed, emty response");
+
   loadConfigTime = millis();
 }
-
-// Add sensor type as tag
-void addSensorTag( const char* tagName, float value, String sensor) {
-  if ( isnan(value) || (sensor == ""))  //No sensor, exit
-    return;
-  envData.addTag( tagName, sensor);
-}
-
-// Convert measured values into InfluxDB point
-void measurementToPoint( tMeasurement* ppm, Point& point) {
-  // Clear tags (except default ones) and fields
-  envData.clearTags();
-  envData.clearFields();
-
-  // Add InfluxDB tags
-  addSensorTag( "TemperatureSensor", ppm->temp, tempSens);
-  addSensorTag( "HumiditySensor", ppm->hum, humSens);
-  addSensorTag( "PressureSensor", ppm->pres, presSens);
-  addSensorTag( "CO2Sensor", ppm->co2, co2Sens);
-  addSensorTag( "TVOCSensor", ppm->tvoc, tvocSens);
-  addSensorTag( "GPSSensor", ppm->latitude, gpsSens);
-
-  // Report measured values. If NAN, addField will skip it
-  point.setTime( ppm->timestamp);
-  point.addField("Temperature", ppm->temp);
-  point.addField("Humidity", ppm->hum);
-  point.addField("Pressure", ppm->pres);
-  if ( !isnan(ppm->co2))
-    point.addField("CO2", uint16_t(ppm->co2));
-  if ( !isnan(ppm->tvoc))
-    point.addField("TVOC", uint16_t(ppm->tvoc));
-  point.addField("Lat", ppm->latitude, 6);
-  point.addField("Lon", ppm->longitude, 6);
-}
-
-#if defined(MEMORY_DEBUG)
-//Only for memory debug puproses - detect memory leaks
-void printHeap( const char* location){
-  Serial.print(location);
-  Serial.print(" - Free: ");
-#if defined(ESP8266)  
-  Serial.println(ESP.getFreeHeap());
-#elif defined(ESP32)  
-  Serial.print(ESP.getFreeHeap());
-  Serial.print(" Min: ");
-  Serial.print(ESP.getMinFreeHeap());
-  Serial.print(" Size: ");
-  Serial.print(ESP.getHeapSize());
-  Serial.print(" Alloc: ");
-  Serial.println(ESP.getMaxAllocHeap());
-#endif
-  if (client.isBufferEmpty()) {
-    Point memData("memory");
-    memData.addTag( "Code", location);
-    memData.addField("Free", ESP.getFreeHeap());
-#if defined(ESP32)    
-    memData.addField("Min", ESP.getMinFreeHeap());
-    memData.addField("Size", ESP.getHeapSize());
-    memData.addField("Alloc", ESP.getMaxAllocHeap());
-#endif    
-    client.writePoint(memData);
-    client.flushBuffer();
-  }
-}
-#else
-#define printHeap(s)
-#endif
 
 // Arduino main setup fuction
 void setup() {
   //Prepare logging
   Serial.begin(115200);
+  Serial.println();
+  Serial.println( "V" VERSION);
   delay(500);
   printHeap("setup start");
 
@@ -253,21 +187,45 @@ void setup() {
 
   // Setup wifi
   WiFi.mode(WIFI_STA);
-  wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  Serial.print("Connecting to wifi");
-  while (wifiMulti.run() != WL_CONNECTED) {
+  Serial.print("Connecting to wifi ");
+  Serial.print(WIFI_SSID);
+  while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(100);
   }
   Serial.println();
-  Serial.println("Connected " + WiFi.SSID() + " " + IpAddress2String(WiFi.localIP()));
+  Serial.println("Connected " + WiFi.SSID() + " " +  WiFi.localIP().toString());
+
+  //Generate Device ID
+  deviceID = WiFi.macAddress();
+  deviceID.remove(14, 1); //remove MAC separators
+  deviceID.remove(11, 1);
+  deviceID.remove(8, 1);
+  deviceID.remove(5, 1);
+  deviceID.remove(2, 1);
+  deviceID = String(DEVICE) + "-" + deviceID;
 
   // Load configuration including time
   configSync();
   printHeap("setup exit");
 }
 
+bool writeReady() {
+  if ( dataIntf == i_influxdb || dataIntf == i_kafka)
+    return readyInfluxDB();
+  if ( dataIntf == i_mqtt)
+    return readyMQTT();
+}
+
+bool writeData() {
+  if ( dataIntf == i_influxdb || dataIntf == i_kafka)
+    return writeInfluxDB();
+  if ( dataIntf == i_mqtt)
+    return writeMQTT( getMeasurementStr());
+}
+  
 // Arduino main loop function
 void loop() {
   printHeap("loop");
@@ -279,52 +237,45 @@ void loop() {
   pm->timestamp = time(nullptr);
   readSensors( pm);
 
-  // Convert measured values into InfluxDB point
-  measurementToPoint( pm, envData);
-
   // Write point into buffer
   unsigned long writeTime = millis();
 
+  // If no Wifi signal, try to reconnect it
+  if (WiFi.status() != WL_CONNECTED)
+    Serial.println("Error, Wifi connection lost");
+
+  // Flush buffer is needed and possible
+  if (!mBuff.isEmpty()) {
+    //Write circular buffer if not empty
+    while (writeReady() && !mBuff.isEmpty()) {
+      pm = mBuff.dequeue();
+      setMeasurement( pm);
+      Serial.print("Restoring from cBuffer: ");
+      Serial.println(getMeasurementStr());
+      writeData();
+    }
+  }
+
   if (!isnan(pm->temp)) { //Write to InfluxDB only if we have a valid temperature
-    if ( client.isBufferEmpty()) { //Only if InfluxDB client buffer is flushed, write new data
-      // Print what are we exactly writing
+    // Convert measured values into InfluxDB point
+    setMeasurement( pm);
+    
+    if ( writeReady()) { //Only if InfluxDB client buffer is flushed, write new data
       Serial.print("Writing: ");
-      Serial.println(client.pointToLineProtocol(envData));
-      client.writePoint(envData);
+      Serial.println(getMeasurementStr());
+      writeData();
     } else {
       if (mBuff.isFull())
         Serial.println("Error, full cBuffer, dropping the oldest record");
       Serial.print("Writing to cBuffer: ");
-      Serial.println(client.pointToLineProtocol(envData));
+      Serial.println(getMeasurementStr());
       mBuff.enqueue();            //if we already have data in InfluxDB client buffer, save to circular buffer
       Serial.print("cBuffer size: ");
       Serial.print( mBuff.size() + 1);  //One record is allocated for actual write
       Serial.println(" of " xstr(OFFLINE_BUFFER_SIZE));
     }
   } else
-    Serial.println("Error, missing temperature, skipping write");
-
-  // If no Wifi signal, try to reconnect it
-  if ((WiFi.status() != WL_CONNECTED) && (wifiMulti.run() != WL_CONNECTED))
-    Serial.println("Error, Wifi connection lost");
-
-  // End of the iteration - force write of all the values into InfluxDB as single transaction
-  if (client.flushBuffer()) {
-    //Write circular buffer if not empty
-    while (client.isBufferEmpty() && !mBuff.isEmpty()) {
-      pm = mBuff.dequeue();
-      measurementToPoint( pm, envData);
-      Serial.print("Restoring from cBuffer: ");
-      Serial.println(client.pointToLineProtocol(envData));
-      client.writePoint(envData);
-      client.flushBuffer();
-    }
-  } else {
-    Serial.print("Error, InfluxDB flush failed: ");
-    Serial.println(client.getLastErrorMessage());
-    if ( client.isBufferFull())
-      Serial.println("Full client buffer");
-  }
+    Serial.println(F("Error, no temperature, skip write"));
 
   // Test wheter synce sync configuration and configuration from IoT center
   if ((loadConfigTime > millis()) || ( millis() >= loadConfigTime + (configRefresh * 1000))) {
