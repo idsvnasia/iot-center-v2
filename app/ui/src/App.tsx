@@ -10,7 +10,7 @@ import {
   RouteProps,
 } from 'react-router-dom'
 import Markdown from './util/Markdown'
-import './App.css'
+import './App.less'
 import {Layout, Menu} from 'antd'
 import {
   HomeOutlined,
@@ -96,7 +96,8 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
     <div className="App">
       <Layout style={{minHeight: '100vh'}}>
         <Sider
-          collapsible
+          // todo: remove collapsing logic or add 
+          //collapsible
           collapsed={menuCollapsed as boolean}
           onCollapse={() => setMenuCollapsed(!menuCollapsed)}
         >

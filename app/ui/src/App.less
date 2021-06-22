@@ -1,0 +1,25 @@
+@import '~antd/dist/antd.less';
+
+// color palette
+@color-main-bg: #13002d;
+@color-text: #616372;
+@color-body-bg-1: #f6f6f8;
+@color-body-bg-2: #f0f1f3;
+
+@color-primary: #066fc5;
+@color-link: #00a3ff;
+
+
+@primary-color: @color-link;
+@layout-header-background: @color-main-bg;
+@btn-primary-bg: linear-gradient(90deg, @color-primary 0%, @color-link 100%);
+@text-color: @color-text;
+
+// todo: this blinks with white color probably because of app\node_modules\antd\es\button\style\mixin.less:64
+.ant-btn-primary:hover {
+  background: @color-link;
+  border-color: @color-link;
+}
+
+@menu-dark-color: white;
+@menu-dark-highlight-color: white;
