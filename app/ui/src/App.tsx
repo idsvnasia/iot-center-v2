@@ -96,7 +96,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
     <div className="App">
       <Layout style={{minHeight: '100vh'}}>
         <Sider
-          // todo: remove collapsing logic or add 
+          // todo: remove collapsing logic or add
           //collapsible
           collapsed={menuCollapsed as boolean}
           onCollapse={() => setMenuCollapsed(!menuCollapsed)}

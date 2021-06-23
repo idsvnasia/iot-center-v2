@@ -259,7 +259,6 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
         <>
           <Tooltip title="Register a new Device">
             <Button
-              type="dashed"
               onClick={() => {
                 let deviceId = ''
                 Modal.confirm({

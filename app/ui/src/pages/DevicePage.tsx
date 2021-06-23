@@ -368,8 +368,8 @@ const DevicePage: FunctionComponent<
     >
       {deviceId === VIRTUAL_DEVICE ? (
         <>
-          <div style={{visibility: progress >= 0 ? 'visible' : 'hidden'}}>
-            <Progress percent={progress >= 0 ? Math.trunc(progress) : 0} />
+          <div style={{ visibility: progress >= 0 ? 'visible' : 'hidden' }}>
+            <Progress percent={progress >= 0 ? Math.trunc(progress) : 0} strokeColor={colorLink} />
           </div>
         </>
       ) : undefined}
@@ -399,12 +399,12 @@ const DevicePage: FunctionComponent<
           {deviceData?.config.influx_token ? '***' : 'N/A'}
         </Descriptions.Item>
       </Descriptions>
-      <Divider>Measurements</Divider>
+      <Title>Measurements</Title>
       <Table
         dataSource={deviceData?.measurements}
         columns={columnDefinitions}
         pagination={false}
-      ></Table>
+      />
     </PageContent>
   )
 }

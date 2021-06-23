@@ -32,6 +32,7 @@ import {getXDomainFromTable} from '../util/tableUtils'
 import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
 import {VIRTUAL_DEVICE} from '../App'
+import {colorLink, colorPrimary, colorText} from '../colors'
 
 interface DeviceConfig {
   influx_url: string
@@ -130,8 +131,8 @@ const measurementsDefinitions: TMeasurementDefinition[] = [
       suffix: ' °C',
       tickSuffix: ' °C',
       gaugeColors: [
-        {id: 'min', name: 'min', value: 0, hex: '#00aaff', type: 'min'},
-        {id: 'max', name: 'max', value: 40, hex: '#ff6666', type: 'max'},
+        {id: 'min', name: 'min', value: 0, hex: colorPrimary, type: 'min'},
+        {id: 'max', name: 'max', value: 40, hex: colorLink, type: 'max'},
       ],
     },
   },
@@ -142,36 +143,8 @@ const measurementsDefinitions: TMeasurementDefinition[] = [
       suffix: ' %',
       tickSuffix: ' %',
       gaugeColors: [
-        {id: 'min', name: 'min', value: 0, hex: '#ff6666', type: 'min'},
-        {
-          id: 'low-warn',
-          name: 'low-warn',
-          value: 30,
-          hex: '#e8e800',
-          type: 'threshold',
-        },
-        {
-          id: 'ideal',
-          name: 'ideal',
-          value: 40,
-          hex: '#00dd00',
-          type: 'threshold',
-        },
-        {
-          id: 'high-warn',
-          name: 'high-warn',
-          value: 60,
-          hex: '#e8e800',
-          type: 'threshold',
-        },
-        {
-          id: 'high-warn',
-          name: 'high-warn',
-          value: 70,
-          hex: '#ff6666',
-          type: 'threshold',
-        },
-        {id: 'max', name: 'max', value: 100, hex: '', type: 'max'},
+        {id: 'min', name: 'min', value: 0, hex: colorPrimary, type: 'min'},
+        {id: 'max', name: 'max', value: 100, hex: colorLink, type: 'max'},
       ],
     },
   },
@@ -183,8 +156,8 @@ const measurementsDefinitions: TMeasurementDefinition[] = [
       tickSuffix: ' hPa',
       decimalPlaces: {digits: 0, isEnforced: true},
       gaugeColors: [
-        {id: 'min', name: 'min', value: 970, hex: '#00ffff', type: 'min'},
-        {id: 'max', name: 'max', value: 1_050, hex: '#ff6666', type: 'max'},
+        {id: 'min', name: 'min', value: 970, hex: colorPrimary, type: 'min'},
+        {id: 'max', name: 'max', value: 1_050, hex: colorLink, type: 'max'},
       ],
     },
   },
@@ -196,8 +169,8 @@ const measurementsDefinitions: TMeasurementDefinition[] = [
       tickSuffix: ' ppm',
       decimalPlaces: {digits: 0, isEnforced: true},
       gaugeColors: [
-        {id: 'min', name: 'min', value: 400, hex: '#00aaff', type: 'min'},
-        {id: 'max', name: 'max', value: 3000, hex: '#ff6666', type: 'max'},
+        {id: 'min', name: 'min', value: 400, hex: colorPrimary, type: 'min'},
+        {id: 'max', name: 'max', value: 3000, hex: colorLink, type: 'max'},
       ],
     },
   },
@@ -209,8 +182,8 @@ const measurementsDefinitions: TMeasurementDefinition[] = [
       tickSuffix: ' ppm',
       decimalPlaces: {digits: 0, isEnforced: true},
       gaugeColors: [
-        {id: 'min', name: 'min', value: 250, hex: '#00aaff', type: 'min'},
-        {id: 'max', name: 'max', value: 2000, hex: '#ff6666', type: 'max'},
+        {id: 'min', name: 'min', value: 250, hex: colorPrimary, type: 'min'},
+        {id: 'max', name: 'max', value: 2000, hex: colorLink, type: 'max'},
       ],
     },
   },
@@ -336,16 +309,14 @@ const DashboardPage: FunctionComponent<
     )
   }
 
-  const GaugeTime = ({time}: {time: number}) => {
+  const gaugeLastTimeMessage = (time: number) => {
     const now = Date.now()
     const diff = now - time
 
-    if (diff < 60_000) return <div style={{color: 'green'}}>just now</div>
-    if (diff < 300_000)
-      return <div style={{color: 'green'}}>less than 5 min ago</div>
-    if (diff < 900_000)
-      return <div style={{color: '#ffbb77'}}>more than 5 min ago</div>
-    return <div style={{color: 'red'}}>long time ago</div>
+    if (diff < 60_000) return 'just now'
+    if (diff < 300_000) return 'less than 5 min ago'
+    if (diff < 900_000) return 'more than 5 min ago'
+    return 'long time ago'
   }
 
   const gaugeMissingValues: string[] = []
@@ -374,7 +345,9 @@ const DashboardPage: FunctionComponent<
                 title={title}
                 extra={
                   <Tooltip title={new Date(time).toISOString()}>
-                    <GaugeTime {...{time}} />
+                    <div style={{color: colorText}}>
+                      {gaugeLastTimeMessage(time)}
+                    </div>
                   </Tooltip>
                 }
               >
@@ -402,6 +375,7 @@ const DashboardPage: FunctionComponent<
       x: '_time',
       y: column,
       interpolation: 'linear',
+      colors: [colorPrimary],
     }
 
     return (
