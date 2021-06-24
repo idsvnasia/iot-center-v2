@@ -193,8 +193,6 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
       render: (deviceId: string) => (
         <Link to={`/devices/${deviceId}`}>{deviceId}</Link>
       ),
-      sorter: (a: DeviceInfo, b: DeviceInfo) =>
-        a.deviceId > b.deviceId ? 1 : -1,
     },
     {
       title: 'Registration Time',
@@ -223,12 +221,14 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
         <>
           <Tooltip title="Go to device settings" placement="topRight">
             <Button
+              type="text"
               icon={<SettingFilled />}
               href={`/devices/${device.deviceId}`}
             />
           </Tooltip>
           <Tooltip title="Go to device dashboard" placement="topRight">
             <Button
+              type="text"
               icon={<AreaChartOutlined />}
               href={`/dashboard/${device.deviceId}`}
             />
@@ -242,7 +242,7 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
             cancelText="No"
           >
             <Tooltip title="Remove device" placement="topRight" color="red">
-              <Button type="default" icon={<DeleteFilled />} danger />
+              <Button type="text" icon={<DeleteFilled />} danger />
             </Tooltip>
           </Popconfirm>
         </>

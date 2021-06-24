@@ -41,7 +41,7 @@ const PageContent: FunctionComponent<PageContentProps> = (props) => {
     >
       <PageHeader
         title={props.title}
-        style={{ paddingLeft: 0, paddingRight: 0, paddingTop: 0 }}
+        style={{paddingLeft: 0, paddingRight: 0, paddingTop: 0}}
         extra={props?.titleExtra}
       />
       {props.message ? (

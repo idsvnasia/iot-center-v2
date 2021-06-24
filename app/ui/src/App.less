@@ -1,5 +1,7 @@
 @import '~antd/dist/antd.less';
 
+// todo: make this more less-like
+
 // color palette
 @color-main-bg: #13002d;
 @color-text: #616372;
@@ -15,6 +17,10 @@
 @layout-header-background: @color-main-bg;
 @btn-primary-bg: linear-gradient(90deg, @color-primary 0%, @color-link 100%);
 @text-color: @color-text;
+
+.ant-page-header {
+  padding-bottom: 43px;
+}
 
 // todo: this blinks with white color probably because of app\node_modules\antd\es\button\style\mixin.less:64
 .ant-btn-primary:hover {
@@ -48,4 +54,43 @@
 
 .ant-descriptions-header {
   margin-top: calc(35px);
+}
+
+.ant-pagination {
+  // todo: wihtout !important
+  button{
+    border: none !important;
+    background: none !important;
+  }
+
+  li{
+    border: none !important;
+    background: none !important;
+  }
+
+  font-weight: bold;
+
+  .ant-pagination{
+    // clickables
+    &-prev, &-next {
+      & > * {
+        color: @color-link;
+      }
+    }
+    &-item a {
+      color: @color-link;
+    }
+
+    // non-clickable
+    &-disabled > * {
+      color: @color-text;
+    }
+    &-item-active a {
+      color: @color-text;
+    }
+  }
+}
+
+.ant-collapse {
+  box-shadow: @box-shadow;
 }

@@ -27,6 +27,8 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons'
 import Table, {ColumnsType} from 'antd/lib/table'
+import {colorLink} from '../colors'
+import {Title} from '../util/Antd.utils'
 
 interface DeviceConfig {
   influx_url: string
@@ -368,8 +370,11 @@ const DevicePage: FunctionComponent<
     >
       {deviceId === VIRTUAL_DEVICE ? (
         <>
-          <div style={{ visibility: progress >= 0 ? 'visible' : 'hidden' }}>
-            <Progress percent={progress >= 0 ? Math.trunc(progress) : 0} strokeColor={colorLink} />
+          <div style={{visibility: progress >= 0 ? 'visible' : 'hidden'}}>
+            <Progress
+              percent={progress >= 0 ? Math.trunc(progress) : 0}
+              strokeColor={colorLink}
+            />
           </div>
         </>
       ) : undefined}

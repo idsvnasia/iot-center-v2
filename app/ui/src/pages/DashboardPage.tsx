@@ -322,7 +322,7 @@ const DashboardPage: FunctionComponent<
   const gaugeMissingValues: string[] = []
   const gauges = deviceData?.measurementsLastValues?.length ? (
     <>
-      <Row gutter={[4, 8]}>
+      <Row gutter={[22, 22]}>
         {measurementsDefinitions.map(({gauge, title, column}) => {
           const lastValueTable = deviceData?.measurementsLastValues?.find(
             (x) => x.column === column
@@ -411,15 +411,19 @@ const DashboardPage: FunctionComponent<
 
           return (
             <>
-              <Collapse
-                defaultActiveKey={measurementsWithValues.map((_, i) => i)}
-              >
+              <Row gutter={[0, 24]}>
                 {measurementsWithValues.map(({line, title, column}, i) => (
-                  <CollapsePanel key={i} header={title}>
-                    {renderPlot(line, measurementsTable, column)}
-                  </CollapsePanel>
+                  <Col xs={24}>
+                    <Collapse
+                      defaultActiveKey={measurementsWithValues.map((_, i) => i)}
+                    >
+                      <CollapsePanel key={i} header={title}>
+                        {renderPlot(line, measurementsTable, column)}
+                      </CollapsePanel>
+                    </Collapse>
+                  </Col>
                 ))}
-              </Collapse>
+              </Row>
               {measurementsNoValues.length ? (
                 <Collapse>
                   {measurementsNoValues.map(({title}, i) => (
