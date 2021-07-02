@@ -12,7 +12,7 @@ import {
 } from 'antd'
 import {Link} from 'react-router-dom'
 import {ColumnsType} from 'antd/lib/table'
-import {
+import Icon, {
   AreaChartOutlined,
   DeleteFilled,
   ExclamationCircleFilled,
@@ -22,6 +22,10 @@ import {flux, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
 import {timeFormatter} from '@influxdata/giraffe'
 import {VIRTUAL_DEVICE} from '../App'
+
+import {ReactComponent as SettingsIcon} from '../styles/icons/deviceRegistrationSettings.svg'
+import {ReactComponent as DashboardIcon} from '../styles/icons/deviceRegistrationDashboard.svg'
+import {ReactComponent as DeleteIcon} from '../styles/icons/deviceRegistrationDelete.svg'
 
 export interface DeviceInfo {
   key: string
@@ -222,14 +226,14 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
           <Tooltip title="Go to device settings" placement="topRight">
             <Button
               type="text"
-              icon={<SettingFilled />}
+              icon={<Icon component={SettingsIcon} />}
               href={`/devices/${device.deviceId}`}
             />
           </Tooltip>
           <Tooltip title="Go to device dashboard" placement="topRight">
             <Button
               type="text"
-              icon={<AreaChartOutlined />}
+              icon={<Icon component={DashboardIcon} />}
               href={`/dashboard/${device.deviceId}`}
             />
           </Tooltip>
@@ -242,7 +246,7 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
             cancelText="No"
           >
             <Tooltip title="Remove device" placement="topRight" color="red">
-              <Button type="text" icon={<DeleteFilled />} danger />
+              <Button type="text" icon={<Icon component={DeleteIcon} />} />
             </Tooltip>
           </Popconfirm>
         </>

@@ -21,7 +21,7 @@ import {
   GaugeLayerConfig,
   LineLayerConfig,
 } from '@influxdata/giraffe'
-import {
+import Icon, {
   SettingFilled,
   ReloadOutlined,
   InfoCircleFilled,
@@ -33,6 +33,9 @@ import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
 import {VIRTUAL_DEVICE} from '../App'
 import {colorLink, colorPrimary, colorText} from '../colors'
+
+import {ReactComponent as RefreshIcon} from '../styles/icons/refresh.svg'
+import {ReactComponent as SettingsIcon} from '../styles/icons/deviceRegistrationSettings.svg'
 
 interface DeviceConfig {
   influx_url: string
@@ -461,7 +464,7 @@ const DashboardPage: FunctionComponent<
           showArrow={true}
           filterOption={true}
           onChange={(key) => history.push(`/dashboard/${key}`)}
-          style={{minWidth: 200, width: 350}}
+          style={{minWidth: 200, width: 350, marginRight: 10}}
           loading={!devices}
           disabled={!devices}
         >
@@ -495,13 +498,15 @@ const DashboardPage: FunctionComponent<
           disabled={loading}
           loading={loading}
           onClick={() => setDataStamp(dataStamp + 1)}
-          icon={<ReloadOutlined />}
+          style={{marginLeft: 10}}
+          icon={<Icon component={RefreshIcon} />}
         />
       </Tooltip>
       <Tooltip title="Go to device settings" placement="topRight">
         <Button
           type="primary"
-          icon={<SettingFilled />}
+          icon={<Icon component={SettingsIcon} />}
+          style={{marginLeft: 10}}
           href={`/devices/${deviceId}`}
         ></Button>
       </Tooltip>

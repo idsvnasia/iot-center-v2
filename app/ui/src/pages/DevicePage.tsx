@@ -20,15 +20,15 @@ import {
   fetchGPXData,
   generateGPXData,
 } from '../util/generateValue'
-import {
-  AreaChartOutlined,
-  EditOutlined,
-  InfoCircleFilled,
-  ReloadOutlined,
-} from '@ant-design/icons'
+import Icon, {InfoCircleFilled} from '@ant-design/icons'
 import Table, {ColumnsType} from 'antd/lib/table'
 import {colorLink} from '../colors'
 import {Title} from '../util/Antd.utils'
+import {GridDescription} from '../util/GridDescription'
+
+import {ReactComponent as WriteDataIcon} from '../styles/icons/writeData.svg'
+import {ReactComponent as RefreshIcon} from '../styles/icons/refresh.svg'
+import {ReactComponent as DashboardIcon} from '../styles/icons/dashboard.svg'
 
 interface DeviceConfig {
   influx_url: string
@@ -290,14 +290,8 @@ const DevicePage: FunctionComponent<
           <Button
             onClick={writeData}
             disabled={writeButtonDisabled}
-            style={{
-              boxSizing: 'border-box',
-              borderWidth: '2px',
-              ...(!writeButtonDisabled && {borderColor: '#1890ff'}),
-            }}
-          >
-            <EditOutlined />
-          </Button>
+            icon={<Icon component={WriteDataIcon} />}
+          />
         </Tooltip>
       ) : undefined}
       <Tooltip title="Reload" placement="topRight">
@@ -305,13 +299,13 @@ const DevicePage: FunctionComponent<
           disabled={loading}
           loading={loading}
           onClick={() => setDataStamp(dataStamp + 1)}
-          icon={<ReloadOutlined />}
+          icon={<Icon component={RefreshIcon} />}
         />
       </Tooltip>
       <Tooltip title="Go to device dashboard" placement="topRight">
         <Button
           type="primary"
-          icon={<AreaChartOutlined />}
+          icon={<Icon component={DashboardIcon} />}
           href={`/dashboard/${deviceId}`}
         ></Button>
       </Tooltip>
@@ -378,32 +372,38 @@ const DevicePage: FunctionComponent<
           </div>
         </>
       ) : undefined}
-      <Descriptions
+      <GridDescription
         title="Device Configuration"
-        bordered
         column={
           helpCollapsed ? {xxl: 3, xl: 2, md: 1, sm: 1} : {xxl: 2, md: 1, sm: 1}
         }
-      >
-        <Descriptions.Item label="Device ID">
-          {deviceData?.config.id}
-        </Descriptions.Item>
-        <Descriptions.Item label="Registration Time">
-          {deviceData?.config.createdAt}
-        </Descriptions.Item>
-        <Descriptions.Item label="InfluxDB URL">
-          {deviceData?.config.influx_url}
-        </Descriptions.Item>
-        <Descriptions.Item label="InfluxDB Organization">
-          {deviceData?.config.influx_org}
-        </Descriptions.Item>
-        <Descriptions.Item label="InfluxDB Bucket">
-          {deviceData?.config.influx_bucket}
-        </Descriptions.Item>
-        <Descriptions.Item label="InfluxDB Token">
-          {deviceData?.config.influx_token ? '***' : 'N/A'}
-        </Descriptions.Item>
-      </Descriptions>
+        descriptions={[
+          {
+            label: 'Device ID',
+            value: deviceData?.config.id,
+          },
+          {
+            label: 'Registration Time',
+            value: deviceData?.config.createdAt,
+          },
+          {
+            label: 'InfluxDB URL',
+            value: deviceData?.config.influx_url,
+          },
+          {
+            label: 'InfluxDB Organization',
+            value: deviceData?.config.influx_org,
+          },
+          {
+            label: 'InfluxDB Bucket',
+            value: deviceData?.config.influx_bucket,
+          },
+          {
+            label: 'InfluxDB Token',
+            value: deviceData?.config.influx_token ? '***' : 'N/A',
+          },
+        ]}
+      />
       <Title>Measurements</Title>
       <Table
         dataSource={deviceData?.measurements}

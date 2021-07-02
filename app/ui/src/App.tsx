@@ -10,20 +10,20 @@ import {
   RouteProps,
 } from 'react-router-dom'
 import Markdown from './util/Markdown'
-import './App.less'
+import './styles/App.less'
 import {Layout, Menu} from 'antd'
-import {
-  HomeOutlined,
-  DoubleRightOutlined,
-  FastForwardOutlined,
-  AreaChartOutlined,
-} from '@ant-design/icons'
+import Icon from '@ant-design/icons'
 
 import HomePage from './pages/HomePage'
 import DevicesPage from './pages/DevicesPage'
 import DevicePage from './pages/DevicePage'
 import NotFoundPage from './pages/NotFoundPage'
 import DashboardPage from './pages/DashboardPage'
+
+import {ReactComponent as HomeIcon} from './styles/icons/menuHome.svg'
+import {ReactComponent as DeviceRegistrationIcon} from './styles/icons/menuDeviceRegistration.svg'
+import {ReactComponent as VirtualDeviceIcon} from './styles/icons/menuVirtualDevice.svg'
+import {ReactComponent as DashboardIcon} from './styles/icons/menuDashboard.svg'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
@@ -119,19 +119,25 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             ]}
             mode="inline"
           >
-            <Menu.Item key="/home" icon={<HomeOutlined />}>
+            <Menu.Item key="/home" icon={<Icon component={HomeIcon} />}>
               <NavLink to="/home">Home</NavLink>
             </Menu.Item>
-            <Menu.Item key="/devices" icon={<DoubleRightOutlined />}>
+            <Menu.Item
+              key="/devices"
+              icon={<Icon component={DeviceRegistrationIcon} />}
+            >
               <NavLink to="/devices">Device Registrations</NavLink>
             </Menu.Item>
             <Menu.Item
               key="/devices/virtual_device"
-              icon={<FastForwardOutlined />}
+              icon={<Icon component={VirtualDeviceIcon} />}
             >
               <NavLink to="/devices/virtual_device">Virtual Device</NavLink>
             </Menu.Item>
-            <Menu.Item key="/dashboard/:device" icon={<AreaChartOutlined />}>
+            <Menu.Item
+              key="/dashboard/:device"
+              icon={<Icon component={DashboardIcon} />}
+            >
               <NavLink to="/dashboard">Dashboard</NavLink>
             </Menu.Item>
             {}

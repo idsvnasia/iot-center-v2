@@ -2,6 +2,24 @@
 
 // todo: make this more less-like
 
+@font-face {
+  font-family: 'Rubik';
+  src: local('Rubik'), url(./fonts/Rubik-VariableFont_wght.ttf) format('truetype-variations');
+}
+
+* {
+  // todo: add fallbacks
+  font-family: Rubik;
+}
+
+.ant-btn {
+  border-radius: 4px;
+}
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  border-radius: 3px;
+}
+
 // color palette
 @color-main-bg: #13002d;
 @color-text: #616372;
@@ -11,12 +29,20 @@
 @color-primary: #066fc5;
 @color-link: #00a3ff;
 
+@layout-body-background: @color-body-bg-2;
+
 @box-shadow: 0px 0px 25px rgba(0, 0, 0, 0.15);
 
 @primary-color: @color-link;
 @layout-header-background: @color-main-bg;
 @btn-primary-bg: linear-gradient(90deg, @color-primary 0%, @color-link 100%);
 @text-color: @color-text;
+
+@collapse-header-bg: @color-body-bg-1;
+
+.ant-btn-primary {
+  border: none;
+}
 
 .ant-page-header {
   padding-bottom: 43px;
@@ -30,6 +56,32 @@
 
 @menu-dark-color: white;
 @menu-dark-highlight-color: white;
+
+@dropdown-line-height: 45px;
+@select-dropdown-height: 45px;
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  height: 45px;
+  align-items: center;
+}
+
+a.ant-btn{
+  line-height: 48px;
+}
+
+.ant-btn:not(.ant-btn-icon-only) {
+  height: 45px;
+  padding: 12px 30.5px;
+}
+
+.ant-btn-icon-only {
+  width: 45px;
+  height: 45px;
+
+  > * {
+    font-size: 22px;
+  }
+}
 
 .ant-card-bordered {
   box-shadow: @box-shadow;
@@ -93,4 +145,16 @@
 
 .ant-collapse {
   box-shadow: @box-shadow;
+  
+  > .ant-collapse-item:last-child {
+    > .ant-collapse-header {
+      padding: 30px 60px;
+    }
+  }
 }
+
+.ant-collapse > .ant-collapse-item > .ant-collapse-header .ant-collapse-arrow {
+  top: 23px;
+  left: 36px;
+}
+
