@@ -29,30 +29,18 @@
 @color-primary: #066fc5;
 @color-link: #00a3ff;
 
+@btn-gradient: linear-gradient(90deg, @color-primary 0%, @color-link 100%);
+
 @layout-body-background: @color-body-bg-2;
 
 @box-shadow: 0px 0px 25px rgba(0, 0, 0, 0.15);
 
 @primary-color: @color-link;
 @layout-header-background: @color-main-bg;
-@btn-primary-bg: linear-gradient(90deg, @color-primary 0%, @color-link 100%);
+@btn-primary-bg: @btn-gradient;
 @text-color: @color-text;
 
 @collapse-header-bg: @color-body-bg-1;
-
-.ant-btn-primary {
-  border: none;
-}
-
-.ant-page-header {
-  padding-bottom: 43px;
-}
-
-// todo: this blinks with white color probably because of app\node_modules\antd\es\button\style\mixin.less:64
-.ant-btn-primary:hover {
-  background: @color-link;
-  border-color: @color-link;
-}
 
 @menu-dark-color: white;
 @menu-dark-highlight-color: white;
@@ -60,13 +48,31 @@
 @dropdown-line-height: 45px;
 @select-dropdown-height: 45px;
 
-.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
-  height: 45px;
-  align-items: center;
+.ant-btn-primary {
+  border: none;
+  transition: none;
+
+  &:focus {
+    background: @btn-gradient;
+  }
+
+  &:hover {
+    background: @color-link;
+    border-color: @color-link;
+  }
 }
 
 a.ant-btn{
   line-height: 48px;
+}
+
+.ant-page-header {
+  padding-bottom: 43px;
+}
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  height: 45px;
+  align-items: center;
 }
 
 .ant-btn:not(.ant-btn-icon-only) {
@@ -89,19 +95,15 @@ a.ant-btn{
 
 .ant-table {
   background: none;
-}
 
-.ant-table table { 
-  border-spacing: 0 5px;
-  filter: drop-shadow(@box-shadow);
-}
+  table { 
+    border-spacing: 0 5px;
+    filter: drop-shadow(@box-shadow);
 
-.ant-table table tr {
-  background: white;
-}
-
-.ant-table table thead tr th {
-  background: @color-body-bg-1;
+    tr {
+      background: white;
+    }
+  }
 }
 
 .ant-descriptions-header {
@@ -110,35 +112,24 @@ a.ant-btn{
 
 .ant-pagination {
   // todo: wihtout !important
-  button{
+  button, li{
     border: none !important;
     background: none !important;
   }
-
-  li{
-    border: none !important;
-    background: none !important;
-  }
-
-  font-weight: bold;
 
   .ant-pagination{
     // clickables
-    &-prev, &-next {
-      & > * {
+    &-prev, &-next, &-item {
+      > * {
         color: @color-link;
       }
     }
-    &-item a {
-      color: @color-link;
-    }
 
     // non-clickable
-    &-disabled > * {
-      color: @color-text;
-    }
-    &-item-active a {
-      color: @color-text;
+    &-disabled, &-item-active {
+      > * {
+        color: @color-text;
+      }
     }
   }
 }
@@ -146,15 +137,14 @@ a.ant-btn{
 .ant-collapse {
   box-shadow: @box-shadow;
   
-  > .ant-collapse-item:last-child {
-    > .ant-collapse-header {
+  > .ant-collapse-item {
+    &:last-child > .ant-collapse-header {
       padding: 30px 60px;
+    }
+  
+    > .ant-collapse-header .ant-collapse-arrow {
+      top: 23px;
+      left: 36px;
     }
   }
 }
-
-.ant-collapse > .ant-collapse-item > .ant-collapse-header .ant-collapse-arrow {
-  top: 23px;
-  left: 36px;
-}
-

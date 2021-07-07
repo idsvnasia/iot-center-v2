@@ -1,13 +1,6 @@
 import React, {useState, useEffect, FunctionComponent} from 'react'
 import {InfluxDB, flux, Point} from '@influxdata/influxdb-client'
-import {
-  Tooltip,
-  Button,
-  Progress,
-  Descriptions,
-  notification,
-  Divider,
-} from 'antd'
+import {Tooltip, Button, Progress, notification} from 'antd'
 import {RouteComponentProps} from 'react-router-dom'
 
 import PageContent, {Message} from './PageContent'
@@ -22,13 +15,10 @@ import {
 } from '../util/generateValue'
 import Icon, {InfoCircleFilled} from '@ant-design/icons'
 import Table, {ColumnsType} from 'antd/lib/table'
-import {colorLink} from '../colors'
+import {colorLink} from '../styles/colors'
 import {Title} from '../util/Antd.utils'
 import {GridDescription} from '../util/GridDescription'
-
-import {ReactComponent as WriteDataIcon} from '../styles/icons/writeData.svg'
-import {ReactComponent as RefreshIcon} from '../styles/icons/refresh.svg'
-import {ReactComponent as DashboardIcon} from '../styles/icons/dashboard.svg'
+import {IconDashboard, IconRefresh, IconWriteData} from '../styles/icons'
 
 interface DeviceConfig {
   influx_url: string
@@ -290,7 +280,7 @@ const DevicePage: FunctionComponent<
           <Button
             onClick={writeData}
             disabled={writeButtonDisabled}
-            icon={<Icon component={WriteDataIcon} />}
+            icon={IconWriteData}
           />
         </Tooltip>
       ) : undefined}
@@ -299,13 +289,13 @@ const DevicePage: FunctionComponent<
           disabled={loading}
           loading={loading}
           onClick={() => setDataStamp(dataStamp + 1)}
-          icon={<Icon component={RefreshIcon} />}
+          icon={IconRefresh}
         />
       </Tooltip>
       <Tooltip title="Go to device dashboard" placement="topRight">
         <Button
           type="primary"
-          icon={<Icon component={DashboardIcon} />}
+          icon={IconDashboard}
           href={`/dashboard/${deviceId}`}
         ></Button>
       </Tooltip>

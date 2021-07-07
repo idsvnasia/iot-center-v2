@@ -21,21 +21,15 @@ import {
   GaugeLayerConfig,
   LineLayerConfig,
 } from '@influxdata/giraffe'
-import Icon, {
-  SettingFilled,
-  ReloadOutlined,
-  InfoCircleFilled,
-} from '@ant-design/icons'
+import Icon, {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {DeviceInfo} from './DevicesPage'
 import {getXDomainFromTable} from '../util/tableUtils'
 import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
 import {VIRTUAL_DEVICE} from '../App'
-import {colorLink, colorPrimary, colorText} from '../colors'
-
-import {ReactComponent as RefreshIcon} from '../styles/icons/refresh.svg'
-import {ReactComponent as SettingsIcon} from '../styles/icons/deviceRegistrationSettings.svg'
+import {colorLink, colorPrimary, colorText} from '../styles/colors'
+import {IconRefresh, IconSettings} from '../styles/icons'
 
 interface DeviceConfig {
   influx_url: string
@@ -499,13 +493,13 @@ const DashboardPage: FunctionComponent<
           loading={loading}
           onClick={() => setDataStamp(dataStamp + 1)}
           style={{marginLeft: 10}}
-          icon={<Icon component={RefreshIcon} />}
+          icon={IconRefresh}
         />
       </Tooltip>
       <Tooltip title="Go to device settings" placement="topRight">
         <Button
           type="primary"
-          icon={<Icon component={SettingsIcon} />}
+          icon={IconSettings}
           style={{marginLeft: 10}}
           href={`/devices/${deviceId}`}
         ></Button>

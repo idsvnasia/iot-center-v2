@@ -20,10 +20,12 @@ import DevicePage from './pages/DevicePage'
 import NotFoundPage from './pages/NotFoundPage'
 import DashboardPage from './pages/DashboardPage'
 
-import {ReactComponent as HomeIcon} from './styles/icons/menuHome.svg'
-import {ReactComponent as DeviceRegistrationIcon} from './styles/icons/menuDeviceRegistration.svg'
-import {ReactComponent as VirtualDeviceIcon} from './styles/icons/menuVirtualDevice.svg'
-import {ReactComponent as DashboardIcon} from './styles/icons/menuDashboard.svg'
+import {
+  IconDashboard,
+  IconDeviceRegistration,
+  IconHome,
+  IconVirtualDevice,
+} from './styles/icons'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
@@ -70,7 +72,6 @@ const useHelpCollapsed = (): [boolean, (v: boolean) => void] => {
 }
 
 const App: FunctionComponent<RouteComponentProps> = (props) => {
-  const [menuCollapsed, setMenuCollapsed] = useState(false)
   const [helpCollapsed, setHelpCollapsed] = useHelpCollapsed()
   const [helpText, setHelpText] = useState('')
 
@@ -95,20 +96,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
   return (
     <div className="App">
       <Layout style={{minHeight: '100vh'}}>
-        <Sider
-          // todo: remove collapsing logic or add
-          //collapsible
-          collapsed={menuCollapsed as boolean}
-          onCollapse={() => setMenuCollapsed(!menuCollapsed)}
-        >
-          {/* <Header
-            className="site-layout-background"
-            style={{ padding: "10px" }}
-          >
-            <h1 style={{ color: "rgba(255,255,255,255)" }}>
-              <Link to="/home">IoT&nbsp;Center</Link>
-            </h1>
-          </Header> */}
+        <Sider>
           <Menu
             theme="dark"
             selectedKeys={[
@@ -119,28 +107,18 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             ]}
             mode="inline"
           >
-            <Menu.Item key="/home" icon={<Icon component={HomeIcon} />}>
+            <Menu.Item key="/home" icon={IconHome}>
               <NavLink to="/home">Home</NavLink>
             </Menu.Item>
-            <Menu.Item
-              key="/devices"
-              icon={<Icon component={DeviceRegistrationIcon} />}
-            >
+            <Menu.Item key="/devices" icon={IconDeviceRegistration}>
               <NavLink to="/devices">Device Registrations</NavLink>
             </Menu.Item>
-            <Menu.Item
-              key="/devices/virtual_device"
-              icon={<Icon component={VirtualDeviceIcon} />}
-            >
+            <Menu.Item key="/devices/virtual_device" icon={IconVirtualDevice}>
               <NavLink to="/devices/virtual_device">Virtual Device</NavLink>
             </Menu.Item>
-            <Menu.Item
-              key="/dashboard/:device"
-              icon={<Icon component={DashboardIcon} />}
-            >
+            <Menu.Item key="/dashboard/:device" icon={IconDashboard}>
               <NavLink to="/dashboard">Dashboard</NavLink>
             </Menu.Item>
-            {}
           </Menu>
         </Sider>
         <Switch>
