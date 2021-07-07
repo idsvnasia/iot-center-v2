@@ -12,7 +12,7 @@ import {
 } from 'antd'
 import {Link} from 'react-router-dom'
 import {ColumnsType} from 'antd/lib/table'
-import Icon, {ExclamationCircleFilled} from '@ant-design/icons'
+import {ExclamationCircleFilled} from '@ant-design/icons'
 import {flux, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
 import {timeFormatter} from '@influxdata/giraffe'

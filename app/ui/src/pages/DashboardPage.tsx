@@ -21,7 +21,7 @@ import {
   GaugeLayerConfig,
   LineLayerConfig,
 } from '@influxdata/giraffe'
-import Icon, {InfoCircleFilled} from '@ant-design/icons'
+import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {DeviceInfo} from './DevicesPage'
 import {getXDomainFromTable} from '../util/tableUtils'

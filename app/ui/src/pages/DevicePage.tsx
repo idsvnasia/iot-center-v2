@@ -13,7 +13,7 @@ import {
   fetchGPXData,
   generateGPXData,
 } from '../util/generateValue'
-import Icon, {InfoCircleFilled} from '@ant-design/icons'
+import {InfoCircleFilled} from '@ant-design/icons'
 import Table, {ColumnsType} from 'antd/lib/table'
 import {colorLink} from '../styles/colors'
 import {Title} from '../util/Antd.utils'

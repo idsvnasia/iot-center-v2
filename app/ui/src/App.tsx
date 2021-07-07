@@ -12,7 +12,6 @@ import {
 import Markdown from './util/Markdown'
 import './styles/App.less'
 import {Layout, Menu} from 'antd'
-import Icon from '@ant-design/icons'
 
 import HomePage from './pages/HomePage'
 import DevicesPage from './pages/DevicesPage'
