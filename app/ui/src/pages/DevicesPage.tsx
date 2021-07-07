@@ -218,14 +218,14 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
           <Tooltip title="Go to device settings" placement="topRight">
             <Button
               type="text"
-              icon={IconSettings}
+              icon={<IconSettings />}
               href={`/devices/${device.deviceId}`}
             />
           </Tooltip>
           <Tooltip title="Go to device dashboard" placement="topRight">
             <Button
               type="text"
-              icon={IconDashboard}
+              icon={<IconDashboard />}
               href={`/dashboard/${device.deviceId}`}
             />
           </Tooltip>
@@ -238,7 +238,7 @@ const DevicesPage: FunctionComponent<Props> = ({helpCollapsed}) => {
             cancelText="No"
           >
             <Tooltip title="Remove device" placement="topRight" color="red">
-              <Button type="text" icon={IconDelete} />
+              <Button type="text" icon={<IconDelete />} />
             </Tooltip>
           </Popconfirm>
         </>

@@ -493,13 +493,13 @@ const DashboardPage: FunctionComponent<
           loading={loading}
           onClick={() => setDataStamp(dataStamp + 1)}
           style={{marginLeft: 10}}
-          icon={IconRefresh}
+          icon={<IconRefresh />}
         />
       </Tooltip>
       <Tooltip title="Go to device settings" placement="topRight">
         <Button
           type="primary"
-          icon={IconSettings}
+          icon={<IconSettings />}
           style={{marginLeft: 10}}
           href={`/devices/${deviceId}`}
         ></Button>

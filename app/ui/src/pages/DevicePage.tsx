@@ -280,7 +280,7 @@ const DevicePage: FunctionComponent<
           <Button
             onClick={writeData}
             disabled={writeButtonDisabled}
-            icon={IconWriteData}
+            icon={<IconWriteData />}
           />
         </Tooltip>
       ) : undefined}
@@ -289,13 +289,13 @@ const DevicePage: FunctionComponent<
           disabled={loading}
           loading={loading}
           onClick={() => setDataStamp(dataStamp + 1)}
-          icon={IconRefresh}
+          icon={<IconRefresh />}
         />
       </Tooltip>
       <Tooltip title="Go to device dashboard" placement="topRight">
         <Button
           type="primary"
-          icon={IconDashboard}
+          icon={<IconDashboard />}
           href={`/dashboard/${deviceId}`}
         ></Button>
       </Tooltip>

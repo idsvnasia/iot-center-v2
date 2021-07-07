@@ -106,16 +106,19 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             ]}
             mode="inline"
           >
-            <Menu.Item key="/home" icon={IconHome}>
+            <Menu.Item key="/home" icon={<IconHome />}>
               <NavLink to="/home">Home</NavLink>
             </Menu.Item>
-            <Menu.Item key="/devices" icon={IconDeviceRegistration}>
+            <Menu.Item key="/devices" icon={<IconDeviceRegistration />}>
               <NavLink to="/devices">Device Registrations</NavLink>
             </Menu.Item>
-            <Menu.Item key="/devices/virtual_device" icon={IconVirtualDevice}>
+            <Menu.Item
+              key="/devices/virtual_device"
+              icon={<IconVirtualDevice />}
+            >
               <NavLink to="/devices/virtual_device">Virtual Device</NavLink>
             </Menu.Item>
-            <Menu.Item key="/dashboard/:device" icon={IconDashboard}>
+            <Menu.Item key="/dashboard/:device" icon={<IconDashboard />}>
               <NavLink to="/dashboard">Dashboard</NavLink>
             </Menu.Item>
           </Menu>
