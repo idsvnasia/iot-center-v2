@@ -9,6 +9,7 @@ if (MQTT_URL && MQTT_TOPIC) {
     client.on('message', function (_topic, buffer) {
       const message = buffer.toString()
       console.log(`${message.toString().split('\n').length} lines received`)
+      console.log(message.toString())
     })
     async function onShutdown() {
       try {
