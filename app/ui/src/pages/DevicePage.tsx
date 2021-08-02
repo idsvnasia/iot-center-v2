@@ -278,6 +278,7 @@ const DevicePage: FunctionComponent<
       {writeAllowed ? (
         <Tooltip title="Write Missing Data for the last 7 days" placement="top">
           <Button
+            type="primary"
             onClick={writeData}
             disabled={writeButtonDisabled}
             icon={<IconWriteData />}
@@ -294,7 +295,6 @@ const DevicePage: FunctionComponent<
       </Tooltip>
       <Tooltip title="Go to device dashboard" placement="topRight">
         <Button
-          type="primary"
           icon={<IconDashboard />}
           href={`/dashboard/${deviceId}`}
         ></Button>
