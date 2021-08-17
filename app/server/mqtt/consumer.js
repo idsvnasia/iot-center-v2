@@ -22,5 +22,5 @@ if (MQTT_URL && MQTT_TOPIC) {
     process.on('SIGTERM', onShutdown)
   })().catch(console.error)
 } else {
-  console.log('Please specify both KAFKA_HOST and KAFKA_TOPIC')
+  console.log('Please specify both MQTT_URL and MQTT_TOPIC')
 }
