@@ -8,6 +8,7 @@
     "async-mqtt": "^2.6.1",
     "express": "^4.17.1",
     "express-http-proxy": "^1.6.2",
+    "express-ws": "^5.0.2",
     "kafkajs": "^1.15.0",
     "response-time": "^2.3.2"
   },

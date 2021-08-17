@@ -1,5 +1,6 @@
 /* eslint-disable no-process-exit */
 const express = require('express')
+const expressWs = require('express-ws')
 const path = require('path')
 const proxy = require('express-http-proxy')
 
@@ -16,6 +17,7 @@ process.on('SIGTERM', () => process.exit())
 
 async function startApplication() {
   const app = express()
+  expressWs(app)
 
   // monitor application response time
   monitorResponseTime(app)
