@@ -27,6 +27,18 @@ async function mqttRouter() {
     res.status(204)
     res.end()
   })
+
+  router.ws('/:topic', async function (ws, req) {
+    const topic = req.params.topic
+    const client = await createClient()
+    await client.subscribe(topic)
+    ws.on('close', async function () {
+      await client.close()
+    })
+    client.on('message', function (_topic, buffer) {
+      ws.send(buffer.toString())
+    })
+  })
   return router
 }
 
