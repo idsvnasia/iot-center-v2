@@ -32,7 +32,15 @@ function addWebSockets(app) {
   })
 }
 
+function forEachWebSocket(callback) {
+  wss.clients.forEach(function each(client) {
+    if (client.readyState === 1 /* WebSocket.OPEN */) {
+      callback(client)
+    }
+  })
+}
+
 module.exports = {
   addWebSockets,
-  wss,
+  forEachWebSocket,
 }
