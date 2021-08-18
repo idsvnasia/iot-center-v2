@@ -1,6 +1,5 @@
 /* eslint-disable no-process-exit */
 const express = require('express')
-const expressWs = require('express-ws')
 const path = require('path')
 const proxy = require('express-http-proxy')
 
@@ -10,6 +9,7 @@ const mqtt = require('./mqtt')
 const onboardInfluxDB = require('./influxdb/onboarding')
 const {logEnvironment, INFLUX_URL} = require('./env')
 const {monitorResponseTime, startProcessMonitoring} = require('./monitor')
+const {addWebSockets} = require('./ws')
 
 // terminate on DTRL+C or CTRL+D
 process.on('SIGINT', () => process.exit())
@@ -17,7 +17,7 @@ process.on('SIGTERM', () => process.exit())
 
 async function startApplication() {
   const app = express()
-  expressWs(app)
+  addWebSockets(app)
 
   // monitor application response time
   monitorResponseTime(app)
