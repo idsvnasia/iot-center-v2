@@ -1,5 +1,6 @@
 const express = require('express')
 const {MQTT_TOPIC} = require('../env')
+const {forEachWebSocket} = require('../ws')
 const createClient = require('./createClient')
 
 // returns a router instance using an MQTT client configured from env
@@ -27,17 +28,34 @@ async function mqttRouter() {
     res.status(204)
     res.end()
   })
+  if (!client) return router
 
-  router.ws('/:topic', async function (ws, req) {
-    const topic = req.params.topic
-    const client = await createClient()
-    if (!client) {
-      ws.terminate()
-      return
-    }
-    await client.subscribe(topic)
-    ws.on('close', async function () {
-      await client.close()
+  // subscribe to MQTT and route to web sockets
+  await client.subscribe(MQTT_TOPIC)
+  client.on('message', function (_topic, buffer) {
+    forEachWebSocket((ws) => {
+      if (ws.subscription) {
+        // TODO filter according to subscription
+        ws.send(buffer.toString())
+      }
+    })
+  })
+
+  router.ws('/', async function (ws) {
+    ws.on('message', async function ({data}) {
+      const payload = data.toString()
+      if (payload.startsWith('subscribe:')) {
+        try {
+          const subscription = JSON.parse(
+            payload.substring('subscribe:'.length)
+          )
+          ws.subscription = subscription
+        } catch (e) {
+          console.error('unparseable subscribe message', payload)
+        }
+      } else {
+        console.error('unknown ws message', payload)
+      }
     })
     client.on('message', function (_topic, buffer) {
       ws.send(buffer.toString())
