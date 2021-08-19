@@ -9,6 +9,11 @@ function parseProtocolLines(data) {
   let start = 0
   let i = start
 
+  // TODO the implementation does not expect escaped characters,
+  // it is assumed that no special charaters (\ ,") are used.
+  //
+  // https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_reference/#special-characters
+
   while (i < data.length) {
     let measurement
     const tagPairs = []
