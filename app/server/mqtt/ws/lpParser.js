@@ -1,5 +1,5 @@
 /**
- * Parses protocol lines into array of points having measurement, tags, keys, timestamp fields
+ * Parses protocol lines into array of points having measurement, tagPairs, fields, timestamp fields
  * @param {string|Buffer} data input data
  * @returns arrays of points
  */
@@ -11,7 +11,7 @@ function parseProtocolLines(data) {
 
   while (i < data.length) {
     let measurement
-    const tags = {}
+    const tagPairs = []
     const fields = {}
     let timestamp
 
@@ -30,19 +30,14 @@ function parseProtocolLines(data) {
     // read tag key=value pairs
     if (data[i] === ',') {
       start = ++i
-      let key
       readTags: for (; i < data.length; i++) {
         switch (data[i]) {
-          case '=':
-            key = data.substring(start, i)
-            start = i + 1
-            continue
           case ',':
-            tags[key] = data.substring(start, i)
+            tagPairs.push(data.substring(start, i))
             start = i + 1
             continue
           case ' ':
-            tags[key] = data.substring(start, i)
+            tagPairs.push(data.substring(start, i))
             break readTags
         }
       }
@@ -58,11 +53,11 @@ function parseProtocolLines(data) {
             start = i + 1
             continue
           case ',':
-            fields[key] = data.substring(start, i)
+            fields[key] = toJsValue(data.substring(start, i))
             start = i + 1
             continue
           case ' ':
-            fields[key] = data.substring(start, i)
+            fields[key] = toJsValue(data.substring(start, i))
             break readField
         }
       }
@@ -76,12 +71,32 @@ function parseProtocolLines(data) {
     start = i
     result.push({
       measurement,
-      tags,
+      tagPairs,
       fields,
       timestamp,
     })
   }
   return result
+}
+
+/**
+ * Converts line protocol value to JavaScript value.
+ * @param {string} line protocol field value
+ */
+function toJsValue(val) {
+  if (val === 'true') {
+    return true
+  }
+  if (val === 'false') {
+    return true
+  }
+  if (val.startsWith('"')) {
+    return val.substring(1, val.length > 1 ? val.length - 1 : 1)
+  }
+  if (val.endsWith('i') || val.endsWith('u')) {
+    val = val.substring(0, val.length - 1)
+  }
+  return Number.parseFloat(val)
 }
 
 module.exports = parseProtocolLines
