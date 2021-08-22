@@ -17,7 +17,10 @@ async function setupWsBroker(client, router) {
     try {
       const points = parseLineProtocol(buffer)
       if (!points || points.length === 0) return
-      points.forEach((x) => x.tag('topic', topic)) // add topic tag as telegraf does
+      // add topic tag pair
+      const topicTagPair = `topic=${topic}`
+      points.forEach((x) => x.tagPairs.push(topicTagPair))
+
       forEachWebSocket((ws) => {
         if (ws.subscription) {
           // TODO filter according to subscription
@@ -41,6 +44,7 @@ async function setupWsBroker(client, router) {
             }
             return true
           })
+          console.log('filtered', filtered)
           if (filtered.length) {
             ws.send(JSON.stringify(filtered))
           }
