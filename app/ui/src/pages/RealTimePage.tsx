@@ -2,7 +2,7 @@ import {newTable, Plot, timeFormatter} from '@influxdata/giraffe'
 import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent from './PageContent'
 
-const maxSize = 10
+const maxSize = 100
 
 interface Point {
   measurement: string
@@ -39,13 +39,6 @@ const RealTimePage: FunctionComponent = () => {
       <div>
         This demo shows how to receive runtime points that are published using{' '}
         <code>app/server: yarn mqtt_producer</code>
-      </div>
-      <div>
-        {messages.map((x, i) => (
-          <span key={i} title={new Date(x.ts).toString()}>
-            {Math.round((x.fields.temperature as number) || 0)}{' '}
-          </span>
-        ))}
       </div>
       <div style={{width: '100%', height: 200}}>
         <Plot
