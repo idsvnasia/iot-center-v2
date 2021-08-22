@@ -12,9 +12,12 @@ const parseLineProtocol = require('./lpParser')
 async function setupWsBroker(client, router) {
   // subscribe to MQTT and route to web sockets
   await client.subscribe(MQTT_TOPIC)
-  client.on('message', function (_topic, buffer) {
+  await client.subscribe('test') // TODO add temporarily for testing
+  client.on('message', function (topic, buffer) {
     try {
       const points = parseLineProtocol(buffer)
+      if (!points || points.length === 0) return
+      points.forEach((x) => x.tag('topic', topic)) // add topic tag as telegraf does
       forEachWebSocket((ws) => {
         if (ws.subscription) {
           // TODO filter according to subscription
