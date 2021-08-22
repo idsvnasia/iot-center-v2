@@ -25,6 +25,7 @@ import {
   IconHome,
   IconVirtualDevice,
 } from './styles/icons'
+import RealTimePage from './pages/RealTimePage'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
@@ -152,6 +153,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
               <DashboardPage {...props} helpCollapsed={helpCollapsed} />
             )}
           />
+          <Route exact path="/realtime" component={RealTimePage} />
           <Route path="*" component={NotFoundPage} />
         </Switch>
         {helpText ? (
