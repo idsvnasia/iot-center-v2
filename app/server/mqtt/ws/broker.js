@@ -44,7 +44,6 @@ async function setupWsBroker(client, router) {
             }
             return true
           })
-          console.log('filtered', filtered)
           if (filtered.length) {
             ws.send(JSON.stringify(filtered))
           }
