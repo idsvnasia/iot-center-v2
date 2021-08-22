@@ -2,7 +2,7 @@ const {MQTT_URL, MQTT_TOPIC} = require('../env')
 const createClient = require('./createClient')
 const {Point} = require('@influxdata/influxdb-client')
 
-const SEND_INTERVAL = 2000
+const SEND_INTERVAL = 200
 const hostname = require('os').hostname()
 
 if (MQTT_URL && MQTT_TOPIC) {
