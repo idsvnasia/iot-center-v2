@@ -1452,30 +1452,20 @@
   resolved "https://registry.yarnpkg.com/@influxdata/giraffe/-/giraffe-0.37.0.tgz#3707db58b54715b16978e245cbe25c3aeb4a45db"
   integrity sha512-vzlcjpsObMj2K+uul3yoA1JljXkWbf5V0RMQVXPqmswjS8VAAiRX/r9p/VZjcjHhAQnuoP1lJO+inimqcC3HCQ==
 
-"@influxdata/influxdb-client-apis@^1.13.0":
-  version "1.13.0"
-  resolved "https://registry.yarnpkg.com/@influxdata/influxdb-client-apis/-/influxdb-client-apis-1.13.0.tgz#460b2e1e046784c09c340d50533391dc84ae614a"
-  integrity sha512-LIYrz8xbtefR6tp/9qUTraTQ4VDH01Nk7exNbyEjNaOfHGStjRoOrLH00JE3H0N2b+GD8H5HEiKS+lCfs9D/0w==
-
-"@influxdata/influxdb-client-apis@^1.6.0":
-  version "1.12.0"
-  resolved "https://registry.yarnpkg.com/@influxdata/influxdb-client-apis/-/influxdb-client-apis-1.12.0.tgz#621f680a5f07f6669640378e9fc95baccd8542e9"
-  integrity sha512-na1F/BYjHVNlfFlnc/FtMvw8TfebZIF63TfWH5MfYCWrWENydPa8cXHYQ4G5gIO/4+6QFjmkYbwRArqIXOa1yA==
+"@influxdata/influxdb-client-apis@^1.16.0":
+  version "1.16.0"
+  resolved "https://registry.yarnpkg.com/@influxdata/influxdb-client-apis/-/influxdb-client-apis-1.16.0.tgz#987ae3c83d8d85190be5e47a5b3756deddcf235e"
+  integrity sha512-RutVW7WCrohayQRTI67jVPNW8Uy5UlPa61WfTf8kxDgFxDIi9agALomeN8j/Gs4TEoZwcL0WHIwrnUNmczPU7A==
 
 "@influxdata/influxdb-client-giraffe@^1.13.0":
   version "1.13.0"
   resolved "https://registry.yarnpkg.com/@influxdata/influxdb-client-giraffe/-/influxdb-client-giraffe-1.13.0.tgz#0f53776c8e06f195996dc953731f497bf44ee6a1"
   integrity sha512-d549Y6aKxJzxtYe5jd3iiQhHscLfarmM4AJA0VGF2/W7k3TQgGQcuZNQ7BFOZGODhRmqlxoTm8SlEQoWU9luGQ==
 
-"@influxdata/influxdb-client@1.7.0-nightly.10":
-  version "1.7.0-nightly.10"
-  resolved "https://registry.yarnpkg.com/@influxdata/influxdb-client/-/influxdb-client-1.7.0-nightly.10.tgz#d3a10a5c1ad9f93715414e411fb8a176cbf1ee54"
-  integrity sha512-RShryV7V1ZJHa1piBDxytlTZ5aKmohSHT1Eu9zrwKR46xOhyDtNQ0nmYkMDNXZ7XUrz3+lHE7euuf5M4e29O0A==
-
-"@influxdata/influxdb-client@^1.13.0":
-  version "1.13.0"
-  resolved "https://registry.yarnpkg.com/@influxdata/influxdb-client/-/influxdb-client-1.13.0.tgz#a5c52596720d13253c7ac5527bceeb634713c78f"
-  integrity sha512-ZbWTJ3fHt2HTgKg7/hADgUc0PI1DtYwo95mF8WjSFp/hZ+hG8NQWv+x8gUroxwX3HgfqZL3TNSPHsWf5v+mCGg==
+"@influxdata/influxdb-client@^1.16.0":
+  version "1.16.0"
+  resolved "https://registry.yarnpkg.com/@influxdata/influxdb-client/-/influxdb-client-1.16.0.tgz#3a88ebfe3beff72a6d27203c7e71d2af5617dc27"
+  integrity sha512-cmempPmtY+W4dq7zT/mFEpNNSzTZOGszEeS52+g5SHsTKWvGjTu70fByOE8IaDgm8BggagDObF6U5J1PZZKhjw==
 
 "@jest/console@^24.7.1", "@jest/console@^24.9.0":
   version "24.9.0"
