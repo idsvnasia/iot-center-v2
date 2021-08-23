@@ -3,7 +3,6 @@ const createClient = require('./createClient')
 const {Point} = require('@influxdata/influxdb-client')
 
 const SEND_INTERVAL = 200
-const hostname = require('os').hostname()
 
 if (MQTT_URL && MQTT_TOPIC) {
   ;(async function () {
@@ -11,7 +10,7 @@ if (MQTT_URL && MQTT_TOPIC) {
     console.log('Publishing to', MQTT_TOPIC, 'at', MQTT_URL)
     const sendData = async () => {
       const point = new Point('dummy')
-      point.tag('host', hostname)
+      point.tag('host', 'test-host')
       point.floatField('temperature', Math.random() * 30)
       point.timestamp(new Date())
       const influxLineProtocolData = point.toLineProtocol()

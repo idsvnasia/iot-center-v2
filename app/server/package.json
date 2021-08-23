@@ -17,8 +17,8 @@
     "dev": "nodemon index.js",
     "test": "eslint .",
     "mqtt_dev": "MQTT_TOPIC=iot_center MQTT_URL=mqtt://localhost:1883 nodemon index.js",
-    "mqtt_consumer": "MQTT_TOPIC=iot_center MQTT_URL=mqtt://localhost:1883 node ./mqtt/consumer.js",
-    "mqtt_producer": "MQTT_TOPIC=test MQTT_URL=mqtt://localhost:1883 node ./mqtt/producer.js"
+    "mqtt_subscriber": "MQTT_TOPIC=iot_center MQTT_URL=mqtt://localhost:1883 node ./mqtt/subscriber.js",
+    "mqtt_publisher": "MQTT_TOPIC=test MQTT_URL=mqtt://localhost:1883 node ./mqtt/publisher.js"
   },
   "devDependencies": {
     "eslint": "^7.8.1",

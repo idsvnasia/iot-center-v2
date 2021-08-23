@@ -17,7 +17,8 @@ const RealTimePage: FunctionComponent = () => {
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:5000/mqtt')
-    ws.onopen = () => ws.send('subscribe:[{"measurement":"dummy", "tags":[]}]')
+    ws.onopen = () =>
+      ws.send('subscribe:[{"measurement":"dummy", "tags":["host=test-host"]}]')
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data) as Point[]
       setMessages((prev) => {
@@ -38,7 +39,7 @@ const RealTimePage: FunctionComponent = () => {
     <PageContent title="Realtime Demo">
       <div>
         This demo shows how to receive runtime points that are published using{' '}
-        <code>app/server: yarn mqtt_producer</code>
+        <code>app/server: yarn mqtt_publisher</code>
       </div>
       <div style={{width: '100%', height: 200}}>
         <Plot
