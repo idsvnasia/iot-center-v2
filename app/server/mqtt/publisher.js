@@ -11,7 +11,10 @@ if (MQTT_URL && MQTT_TOPIC) {
     const sendData = async () => {
       const point = new Point('dummy')
       point.tag('host', 'test-host')
-      point.floatField('temperature', Math.random() * 30)
+      point.floatField(
+        'temperature',
+        20 + 20 * Math.sin((Math.PI * (Date.now() % 4_000)) / 2_000)
+      )
       point.timestamp(new Date())
       const influxLineProtocolData = point.toLineProtocol()
       console.log(influxLineProtocolData)
