@@ -11,30 +11,58 @@ interface Point {
   timestamp: string
   ts: number
 }
+interface Subscription {
+  measurement: string
+  tags: string[]
+}
 
 const RealTimePage: FunctionComponent = () => {
   const [messages, setMessages] = useState<Point[]>([])
+  const [subscriptions /*, setSubscriptions */] = useState<Subscription[]>([
+    {measurement: 'dummy', tags: ['host=test-host']},
+  ])
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:5000/mqtt')
-    ws.onopen = () =>
-      ws.send('subscribe:[{"measurement":"dummy", "tags":["host=test-host"]}]')
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data) as Point[]
-      setMessages((prev) => {
-        if (prev.length >= maxSize) {
-          prev = prev.slice(prev.length - maxSize + 1, prev.length)
-        }
-        data.forEach((x: Point) => {
-          x.ts = x.timestamp
-            ? Number.parseInt(x.timestamp.substring(0, 13))
-            : Date.now()
+    let ws: WebSocket | undefined
+    // create a web socket and start listening
+    function startListening() {
+      ws = undefined
+      const newWS = new WebSocket('ws://localhost:5000/mqtt')
+      newWS.onopen = () =>
+        newWS.send('subscribe:' + JSON.stringify(subscriptions))
+      newWS.onmessage = (event) => {
+        const data = JSON.parse(event.data) as Point[]
+        setMessages((prev) => {
+          if (prev.length >= maxSize) {
+            prev = prev.slice(prev.length - maxSize + 1, prev.length)
+          }
+          data.forEach((x: Point) => {
+            x.ts = x.timestamp
+              ? Number.parseInt(x.timestamp.substring(0, 13))
+              : Date.now()
+          })
+          return [...prev, ...data].sort((a, b) => a.ts - b.ts)
         })
-        return [...prev, ...data].sort((a, b) => a.ts - b.ts)
-      })
+      }
+      ws = newWS
     }
-    return () => ws.close()
-  }, [])
+    startListening()
+    // reconnect a broken WS connection
+    const checker = setInterval(() => {
+      if (
+        ws &&
+        (ws.readyState === WebSocket.CLOSING ||
+          ws.readyState === WebSocket.CLOSED)
+      ) {
+        startListening()
+      }
+    }, 2000)
+    // close web socket, clear timer on unmount
+    return () => {
+      clearInterval(checker)
+      if (ws) ws.close()
+    }
+  }, [subscriptions])
   return (
     <PageContent title="Realtime Demo">
       <div>
@@ -69,15 +97,17 @@ const RealTimePage: FunctionComponent = () => {
             valueFormatters: {
               _time: timeFormatter({
                 timeZone: 'UTC',
-                format: 'YYYY-MM-DD HH:mm:ss ZZ',
+                format: 'YYYY-MM-DD HH:mm:ss.sss ZZ',
               }),
             },
           }}
         ></Plot>
       </div>
-      <h3>Last Point</h3>
       {messages.length === 0 ? undefined : (
-        <pre>{JSON.stringify(messages[messages.length - 1], null, 2)}</pre>
+        <>
+          <h3>Last Point</h3>
+          <pre>{JSON.stringify(messages[messages.length - 1], null, 2)}</pre>
+        </>
       )}
     </PageContent>
   )
