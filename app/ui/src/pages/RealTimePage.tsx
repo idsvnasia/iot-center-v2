@@ -27,7 +27,11 @@ const RealTimePage: FunctionComponent = () => {
     // create a web socket and start listening
     function startListening() {
       ws = undefined
-      const newWS = new WebSocket('ws://localhost:5000/mqtt')
+      const host =
+        process.env.NODE_ENV === `development`
+          ? 'localhost:5000'
+          : window.location.host
+      const newWS = new WebSocket(`ws://${host}/mqtt`)
       newWS.onopen = () =>
         newWS.send('subscribe:' + JSON.stringify(subscriptions))
       newWS.onmessage = (event) => {
