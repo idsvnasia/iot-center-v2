@@ -2,6 +2,20 @@ const {MQTT_TOPIC} = require('../../env')
 const {forEachWebSocket} = require('../../ws')
 const parseLineProtocol = require('./lpParser')
 
+function parseLineProtocolWithTopic(topic, buffer) {
+  const points = parseLineProtocol(buffer)
+  if (!points || points.length === 0) return
+  // add topic tag pair
+  const topicTagPair = `topic=${topic}`
+  points.forEach((x) => x.tagPairs.push(topicTagPair))
+  return points
+}
+
+const MQTT_PARSERS = {
+  [MQTT_TOPIC]: parseLineProtocolWithTopic,
+  test: parseLineProtocolWithTopic,
+}
+
 /**
  * Setups express router to forward and filter MQTT messages
  * to web sockets according to their subscriptions.
@@ -10,20 +24,18 @@ const parseLineProtocol = require('./lpParser')
  * @param {express.Router} router express router to setup
  */
 async function setupWsBroker(client, router) {
-  // subscribe to MQTT and route to web sockets
-  await client.subscribe(MQTT_TOPIC)
-  await client.subscribe('test') // TODO add temporarily for testing
+  // subscribe to MQTT
+  for (const topic in MQTT_PARSERS) {
+    await client.subscribe(topic)
+  }
+  // route to web sockets
   client.on('message', function (topic, buffer) {
     try {
-      const points = parseLineProtocol(buffer)
+      const points = MQTT_PARSERS[topic](topic, buffer)
       if (!points || points.length === 0) return
-      // add topic tag pair
-      const topicTagPair = `topic=${topic}`
-      points.forEach((x) => x.tagPairs.push(topicTagPair))
 
       forEachWebSocket((ws) => {
         if (ws.subscription) {
-          // TODO filter according to subscription
           const filtered = points.filter((point) => {
             for (const s of ws.subscription) {
               if (s.measurement !== point.measurement) {
