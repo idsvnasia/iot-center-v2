@@ -1,6 +1,6 @@
-import { Card, Col, Divider, Row } from "antd"
-import { Line } from '@ant-design/charts';
-import React, { FunctionComponent, useEffect, useState } from 'react'
+import {Card, Col, Divider, Row} from 'antd'
+import {Line} from '@ant-design/charts'
+import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent from './PageContent'
 
 const maxSize = 100
@@ -73,10 +73,10 @@ const RealTimePage: FunctionComponent = () => {
   const dist = (arr: number[]) => {
     const min = Math.min(...arr)
     const max = Math.max(...arr)
-    return max - min;
+    return max - min
   }
 
-  const delay = dist(messages.map(x => x.ts)) / (messages.length || 0);
+  const delay = dist(messages.map((x) => x.ts)) / (messages.length || 0)
 
   return (
     <PageContent title="Realtime Demo">
@@ -84,40 +84,49 @@ const RealTimePage: FunctionComponent = () => {
         <Col xs={12}>
           <Card>
             <div>
-              This demo shows how to receive runtime points that are published using{' '}
-              <code>app/server: yarn mqtt_publisher</code>
+              This demo shows how to receive runtime points that are published
+              using <code>app/server: yarn mqtt_publisher</code>
             </div>
             <Divider></Divider>
-            <h3>Last Point (of {(messages.length || 0).toString(10).padStart(4, "_")} points with avg. delay: {Math.ceil(delay).toString(10)})</h3>
-            {messages.length === 0 ? "No messages" : (
-              <pre>{JSON.stringify(messages[messages.length - 1], null, 2)}</pre>
+            <h3>
+              Last Point (of{' '}
+              {(messages.length || 0).toString(10).padStart(4, '_')} points with
+              avg. delay: {Math.ceil(delay).toString(10)})
+            </h3>
+            {messages.length === 0 ? (
+              'No messages'
+            ) : (
+              <pre>
+                {JSON.stringify(messages[messages.length - 1], null, 2)}
+              </pre>
             )}
           </Card>
         </Col>
         <Col xs={12}>
           <Card>
-            <Line data={messages.flatMap(x =>
-              Object.entries(x.fields).map(([key, value]) => ({
-                value, key,
-                time: x.ts,
-              }))
-            )}
+            <Line
+              data={messages.flatMap((x) =>
+                Object.entries(x.fields).map(([key, value]) => ({
+                  value,
+                  key,
+                  time: x.ts,
+                }))
+              )}
               xField="time"
               yField="value"
               seriesField="key"
               animation={false}
-              xAxis={{ label: {
-                  formatter: (v) => new Date(+v).toLocaleTimeString()
-              }}}
+              xAxis={{
+                label: {
+                  formatter: (v) => new Date(+v).toLocaleTimeString(),
+                },
+              }}
             />
           </Card>
         </Col>
       </Row>
 
-      <div style={{ width: '100%', height: 200 }}>
-
-      </div>
-
+      <div style={{width: '100%', height: 200}}></div>
     </PageContent>
   )
 }
