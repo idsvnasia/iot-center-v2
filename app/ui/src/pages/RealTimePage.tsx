@@ -1,5 +1,6 @@
-import {newTable, Plot, timeFormatter} from '@influxdata/giraffe'
-import React, {FunctionComponent, useEffect, useState} from 'react'
+import { Card, Col, Divider, Row } from "antd"
+import { Line } from '@ant-design/charts';
+import React, { FunctionComponent, useEffect, useState } from 'react'
 import PageContent from './PageContent'
 
 const maxSize = 100
@@ -24,8 +25,9 @@ const RealTimePage: FunctionComponent = () => {
 
   useEffect(() => {
     let ws: WebSocket | undefined
+
     // create a web socket and start listening
-    function startListening() {
+    const startListening = () => {
       ws = undefined
       const host =
         process.env.NODE_ENV === `development`
@@ -67,52 +69,57 @@ const RealTimePage: FunctionComponent = () => {
       if (ws) ws.close()
     }
   }, [subscriptions])
+
+  const dist = (arr: number[]) => {
+    const min = Math.min(...arr)
+    const max = Math.max(...arr)
+    return max - min;
+  }
+
+  const delay = dist(messages.map(x => x.ts)) / (messages.length || 0);
+
   return (
     <PageContent title="Realtime Demo">
-      <div>
-        This demo shows how to receive runtime points that are published using{' '}
-        <code>app/server: yarn mqtt_publisher</code>
+      <Row gutter={[24, 24]}>
+        <Col xs={12}>
+          <Card>
+            <div>
+              This demo shows how to receive runtime points that are published using{' '}
+              <code>app/server: yarn mqtt_publisher</code>
+            </div>
+            <Divider></Divider>
+            <h3>Last Point (of {(messages.length || 0).toString(10).padStart(4, "_")} points with avg. delay: {Math.ceil(delay).toString(10)})</h3>
+            {messages.length === 0 ? "No messages" : (
+              <>
+                <pre>{JSON.stringify(messages[messages.length - 1], null, 2)}</pre>
+                <h4>Diagram input</h4>
+                <pre>{JSON.stringify(messages.map(x => ({
+                  temperature: x.fields["temperature"],
+                  time: x.ts
+
+                }))[messages.length - 1], null, 2)}</pre>
+              </>
+            )}
+          </Card>
+        </Col>
+        <Col xs={12}>
+          <Card>
+            <Line data={messages.map(x => ({
+              temperature: x.fields["temperature"],
+              time: x.ts
+            })) || []}
+              xField="time"
+              yField="temperature"
+              animation={false}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <div style={{ width: '100%', height: 200 }}>
+
       </div>
-      <div style={{width: '100%', height: 200}}>
-        <Plot
-          config={{
-            table: newTable(messages.length)
-              .addColumn(
-                '_time',
-                'long',
-                'time',
-                messages.map((x) => x.ts),
-                '_time'
-              )
-              .addColumn(
-                '_value',
-                'double',
-                'number',
-                messages.map((x) => x.fields.temperature as number),
-                'value'
-              ),
-            layers: [
-              {
-                type: 'line',
-                x: '_time',
-                y: '_value',
-              },
-            ],
-            valueFormatters: {
-              _time: timeFormatter({
-                timeZone: 'UTC',
-                format: 'YYYY-MM-DD HH:mm:ss.sss ZZ',
-              }),
-            },
-          }}
-        ></Plot>
-      </div>
-      {messages.length === 0 ? undefined : (
-        <>
-          <h3>Last Point</h3>
-          <pre>{JSON.stringify(messages[messages.length - 1], null, 2)}</pre>
-        </>
-      )}
+
     </PageContent>
   )
 }
