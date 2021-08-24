@@ -26,7 +26,7 @@ import {
   IconVirtualDevice,
 } from './styles/icons'
 import RealTimePage from './pages/RealTimePage'
-import { BorderLeftOutlined } from "@ant-design/icons"
+import {BorderLeftOutlined} from '@ant-design/icons'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
