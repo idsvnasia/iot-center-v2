@@ -2,7 +2,7 @@ const {MQTT_URL, MQTT_TOPIC} = require('../env')
 const createClient = require('./createClient')
 const {Point} = require('@influxdata/influxdb-client')
 
-const SEND_INTERVAL = 200
+const SEND_INTERVAL = 100
 
 if (MQTT_URL && MQTT_TOPIC) {
   ;(async function () {
@@ -15,7 +15,7 @@ if (MQTT_URL && MQTT_TOPIC) {
         'temperature',
         20 + 20 * Math.sin((Math.PI * (Date.now() % 4_000)) / 2_000)
       )
-      point.timestamp(new Date())
+      point.timestamp(new Date().getTime())
       const influxLineProtocolData = point.toLineProtocol()
       console.log(influxLineProtocolData)
       try {
