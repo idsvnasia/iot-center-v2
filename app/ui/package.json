@@ -5,6 +5,7 @@
   "dependencies": {
     "@ant-design/charts": "^1.2.10",
     "@ant-design/icons": "^4.2.2",
+    "@antv/g2plot": "^2.3.31",
     "@craco/craco": "5.8.0",
     "@influxdata/giraffe": "^0.37.0",
     "@influxdata/influxdb-client": "^1.16.0",
