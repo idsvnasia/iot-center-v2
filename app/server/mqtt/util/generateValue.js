@@ -1,5 +1,5 @@
 const DAY_MILLIS = 24 * 60 * 60 * 1000
-const FIXED_MILLIS = DAY_MILLIS / 100_000
+const FIXED_MILLIS = DAY_MILLIS / 10_000
 
 /**
  * Generates measurement values for a specific time.
