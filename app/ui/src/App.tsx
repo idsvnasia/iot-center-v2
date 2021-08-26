@@ -127,9 +127,9 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             <Menu.Item key="/realtime" icon={<BorderLeftOutlined />}>
               <NavLink to="/realtime">Realtime</NavLink>
             </Menu.Item>
-            <Menu.Item key="/realtime-old" icon={<BorderLeftOutlined />}>
+            {/* <Menu.Item key="/realtime-old" icon={<BorderLeftOutlined />}>
               <NavLink to="/realtime-old">Realtime-old</NavLink>
-            </Menu.Item>
+            </Menu.Item> */}
           </Menu>
         </Sider>
         <Switch>
