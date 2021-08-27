@@ -3,8 +3,15 @@ import {Line, Gauge} from '@antv/g2plot'
 import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent from './PageContent'
 import {useRef} from 'react'
+import {useCallback} from 'react'
 
 const maxSize = 400
+
+const host =
+  process.env.NODE_ENV === `development`
+    ? window.location.hostname + ':5000'
+    : window.location.host
+const wsAddress = `ws://${host}/mqtt`
 
 interface Point {
   measurement: string
@@ -37,9 +44,37 @@ const useRafOnce = (callback: () => void) => {
   }
 }
 
+const useWebSocket = (callback: (ws: WebSocket) => void, url: string) => {
+  const wsRef = useRef<WebSocket>()
+
+  const startListening = useCallback(() => {
+    console.log('starting WebSocket')
+    wsRef.current = new WebSocket(url)
+    callback(wsRef.current)
+  }, [callback, url])
+
+  useEffect(() => {
+    startListening()
+    return () => wsRef.current?.close()
+  }, [startListening])
+
+  useEffect(() => {
+    // reconnect a broken WS connection
+    const checker = setInterval(() => {
+      if (
+        wsRef.current &&
+        (wsRef.current.readyState === WebSocket.CLOSING ||
+          wsRef.current.readyState === WebSocket.CLOSED)
+      ) {
+        startListening()
+      }
+    }, 2000)
+    return () => clearInterval(checker)
+  }, [startListening])
+}
+
 type MeasurementGaugeOptions = {
   measurement: string
-  index: number
   min: number
   max: number
   ticks: number[]
@@ -81,7 +116,51 @@ const gaugesOptions: MeasurementGaugeOptions[] = [
     unit: ' ppm',
   },
   // {measurement: 'TVOC', min: 200, max: 2200, ticks: [0, 1 / 3, 2 / 3, 1],color: ['#F4664A', '#FAAD14', '#30BF78'],},
-].map((x, index) => ({index, ...x}))
+]
+
+const MeasurementGauge: React.FC<
+  MeasurementGaugeOptions & {
+    index: number
+    gaugesRef: React.MutableRefObject<Gauge[]>
+  }
+> = ({min, max, ticks, color, unit, measurement, index, gaugesRef}) => {
+  const ref = useRef<HTMLDivElement>(undefined!)
+
+  useEffect(() => {
+    const gauge = new Gauge(ref.current, {
+      percent: 0.75,
+      range: {
+        ticks,
+        color,
+      },
+      axis: {
+        label: {
+          formatter: (v) => +v * (max - min) + min,
+        },
+      },
+      statistic: {
+        content: {
+          formatter: (x) => {
+            if (!x) return ''
+            const {percent} = x
+            return `${(+percent * (max - min) + min).toFixed(0)}${unit}`
+          },
+        },
+      },
+    })
+    gauge.render()
+
+    gaugesRef.current[index] = gauge
+  }, [])
+
+  return (
+    <Col xs={6}>
+      <Card title={measurement}>
+        <div ref={ref} />
+      </Card>
+    </Col>
+  )
+}
 
 const RealTimePage: FunctionComponent = () => {
   const dataRef = useRef<DiagramEntryPoint[]>([])
@@ -112,20 +191,10 @@ const RealTimePage: FunctionComponent = () => {
     }
   })
 
-  useEffect(() => {
-    let ws: WebSocket | undefined
-
-    // create a web socket and start listening
-    const startListening = () => {
-      ws = undefined
-      const host =
-        process.env.NODE_ENV === `development`
-          ? window.location.hostname + ':5000'
-          : window.location.host
-      const newWS = new WebSocket(`ws://${host}/mqtt`)
-      newWS.onopen = () =>
-        newWS.send('subscribe:' + JSON.stringify(subscriptions))
-      newWS.onmessage = (response) => {
+  const wsInit = useCallback<(ws: WebSocket) => void>(
+    (ws) => {
+      ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
+      ws.onmessage = (response) => {
         const obj = JSON.parse(response.data) as Point[]
         const dataArr = dataRef.current
         const dataGauge = dataGaugeRef.current
@@ -144,33 +213,17 @@ const RealTimePage: FunctionComponent = () => {
             }
           }
         }
+
         // todo: uses 5 fields, find alternative universal solution
         const overflow = dataArr.length - maxSize * 5
         if (overflow > 0) dataArr.splice(0, overflow)
 
         invalidate()
       }
-      ws = newWS
-    }
-    startListening()
-
-    // reconnect a broken WS connection
-    const checker = setInterval(() => {
-      if (
-        ws &&
-        (ws.readyState === WebSocket.CLOSING ||
-          ws.readyState === WebSocket.CLOSED)
-      ) {
-        startListening()
-      }
-    }, 2000)
-
-    // close web socket, clear timer on unmount
-    return () => {
-      clearInterval(checker)
-      if (ws) ws.close()
-    }
-  }, [subscriptions])
+    },
+    [subscriptions]
+  )
+  useWebSocket(wsInit, wsAddress)
 
   useEffect(() => {
     if (!diagramContainer.current) return
@@ -191,53 +244,6 @@ const RealTimePage: FunctionComponent = () => {
     lineRef.current = line
   }, [])
 
-  const MeasurementGauge: React.FC<MeasurementGaugeOptions> = ({
-    min,
-    max,
-    ticks,
-    color,
-    unit,
-    index,
-    measurement,
-  }) => {
-    const ref = useRef<HTMLDivElement>(undefined!)
-
-    useEffect(() => {
-      const gauge = new Gauge(ref.current, {
-        percent: 0.75,
-        range: {
-          ticks,
-          color,
-        },
-        axis: {
-          label: {
-            formatter: (v) => +v * (max - min) + min,
-          },
-        },
-        statistic: {
-          content: {
-            formatter: (x) => {
-              if (!x) return ''
-              const {percent} = x
-              return `${(+percent * (max - min) + min).toFixed(0)}${unit}`
-            },
-          },
-        },
-      })
-      gauge.render()
-
-      gaugesRef.current[index] = gauge
-    }, [])
-
-    return (
-      <Col xs={6}>
-        <Card title={measurement}>
-          <div ref={ref} />
-        </Card>
-      </Col>
-    )
-  }
-
   return (
     <PageContent
       title="Realtime Demo"
@@ -250,7 +256,11 @@ const RealTimePage: FunctionComponent = () => {
     >
       <Row gutter={[24, 24]}>
         <Col xs={24}>
-          <Row gutter={[24, 24]}>{gaugesOptions.map(MeasurementGauge)}</Row>
+          <Row gutter={[24, 24]}>
+            {gaugesOptions.map((x, index) => (
+              <MeasurementGauge {...x} key={index} {...{index, gaugesRef}} />
+            ))}
+          </Row>
         </Col>
         <Col xs={24}>
           <Card>
