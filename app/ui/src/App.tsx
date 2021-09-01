@@ -26,6 +26,7 @@ import {
   IconVirtualDevice,
 } from './styles/icons'
 import RealTimePage from './pages/RealTimePage'
+import RealTimeSettingsPage from './pages/RealTimeSettingsPage'
 import {BorderLeftOutlined} from '@ant-design/icons'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
@@ -126,6 +127,9 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             <Menu.Item key="/realtime" icon={<BorderLeftOutlined />}>
               <NavLink to="/realtime">Realtime</NavLink>
             </Menu.Item>
+            <Menu.Item key="/realtime-settings" icon={<BorderLeftOutlined />}>
+              <NavLink to="/realtime-settings">Realtime-settings</NavLink>
+            </Menu.Item>
           </Menu>
         </Sider>
         <Switch>
@@ -158,6 +162,11 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             )}
           />
           <Route exact path="/realtime" component={RealTimePage} />
+          <Route
+            exact
+            path="/realtime-settings"
+            component={RealTimeSettingsPage}
+          />
           <Route path="*" component={NotFoundPage} />
         </Switch>
         {helpText ? (
