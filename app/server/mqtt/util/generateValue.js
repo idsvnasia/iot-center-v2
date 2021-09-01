@@ -26,9 +26,5 @@ function generateValue(period, min = 0, max = 40, time) {
 }
 
 module.exports = {
-  generateTemperature: generateValue.bind(undefined, 30, 0, 40),
-  generateHumidity: generateValue.bind(undefined, 90, 0, 99),
-  generatePressure: generateValue.bind(undefined, 20, 970, 1050),
-  generateCO2: generateValue.bind(undefined, 1, 400, 3000),
-  generateTVOC: generateValue.bind(undefined, 1, 250, 2000),
+  generateValue,
 }
