@@ -1,6 +1,8 @@
 import {Card, Col, Row, Form, Input, Switch, Button} from 'antd'
 import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent from './PageContent'
+import {IconDashboard, IconDelete, IconSettings} from '../styles/icons'
+import {PlusOutlined} from '@ant-design/icons'
 
 const useRefresh = () => {
   const [token, setToken] = useState(Date.now())
@@ -10,11 +12,14 @@ const useRefresh = () => {
   return [refresh, token] as const
 }
 
+type MqttMeasureSettings = {period: number; min: number; max: number}
 type MqttSettings = {
   running: boolean
   sendInterval: number
-  measurements: Record<string, {period: number; min: number; max: number}>
+  measurements: Record<string, MqttMeasureSettings>
 }
+
+const measureDefaults: MqttMeasureSettings = {period: 30, min: 0, max: 100}
 
 const labelCol = {xs: 5}
 const wrapperCol = Object.fromEntries(
@@ -24,6 +29,9 @@ const wrapperCol = Object.fromEntries(
 const RealTimeSettingsPage: FunctionComponent = () => {
   const [settings, setSettings] = useState<MqttSettings>()
   const [refresh, refreshToken] = useRefresh()
+  const [newMeasureName, setNewMeasureName] = useState<string | undefined>(
+    undefined
+  )
 
   useEffect(() => {
     ;(async () => {
@@ -31,6 +39,13 @@ const RealTimeSettingsPage: FunctionComponent = () => {
       setSettings(set)
     })()
   }, [refreshToken])
+
+  const loadDefaults = () => {
+    ;(async () => {
+      const set = await (await fetch('/mqtt/settings/defaults')).json()
+      setSettings(set)
+    })()
+  }
 
   const applyChanges = () => {
     ;(async () => {
@@ -42,6 +57,12 @@ const RealTimeSettingsPage: FunctionComponent = () => {
     })()
   }
 
+  const addNewMeasure = () => {
+    if (newMeasureName && newMeasureName !== '' && settings?.measurements)
+      settings.measurements[newMeasureName!] = {...measureDefaults}
+    setNewMeasureName(undefined);
+  }
+
   return (
     <>
       <PageContent title={'Realtime-settings'}>
@@ -49,6 +70,14 @@ const RealTimeSettingsPage: FunctionComponent = () => {
           <Col xs={24} md={12} xl={8}>
             <Card>
               <Form labelCol={labelCol} wrapperCol={wrapperCol}>
+                <Col
+                  style={{
+                    textAlign: 'right',
+                  }}
+                >
+                  <Button onClick={loadDefaults}>Defaults</Button>
+                  <Button onClick={refresh}>Refresh</Button>
+                </Col>
                 <Form.Item label={'running?'}>
                   <Switch
                     checked={settings?.running}
@@ -169,12 +198,52 @@ const RealTimeSettingsPage: FunctionComponent = () => {
                     </Row>
                   </>
                 ))}
+                <Row>
+                  <Col {...labelCol}></Col>
+                  <Col {...wrapperCol}>
+                    {newMeasureName === undefined ? (
+                      <Button
+                        onClick={() => {
+                          setNewMeasureName('')
+                        }}
+                        style={{width: '100%'}}
+                        icon={<PlusOutlined />}
+                      />
+                    ) : (
+                      <Row>
+                        <Col xs={18}>
+                          <Input
+                            style={{height: '100%'}}
+                            value={newMeasureName}
+                            onChange={(v) => setNewMeasureName(v.target.value)}
+                          />
+                        </Col>
+                        <Col xs={3}>
+                          <Button
+                            onClick={() => {
+                              setNewMeasureName('')
+                            }}
+                            style={{width: '100%'}}
+                            icon={<IconDelete />}
+                          />
+                        </Col>
+                        <Col xs={3}>
+                          <Button
+                            onClick={addNewMeasure}
+                            style={{width: '100%'}}
+                            icon={<PlusOutlined />}
+                          />
+                        </Col>
+                      </Row>
+                    )}
+                  </Col>
+                </Row>
+
                 <Col
                   style={{
                     textAlign: 'right',
                   }}
                 >
-                  <Button onClick={refresh}>Refresh</Button>
                   <Button onClick={applyChanges}>Apply</Button>
                 </Col>
               </Form>

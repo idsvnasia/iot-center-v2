@@ -4,6 +4,8 @@ import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent from './PageContent'
 import {useRef} from 'react'
 import {useCallback} from 'react'
+import ReactGridLayout, {WidthProvider, Layout} from 'react-grid-layout'
+const Grid = WidthProvider(ReactGridLayout)
 
 const maxSize = 400
 
@@ -115,7 +117,14 @@ const gaugesOptions: MeasurementGaugeOptions[] = [
     color: ['#ff5c5c', 'lightgreen', '#ff5c5c'],
     unit: ' ppm',
   },
-  // {measurement: 'TVOC', min: 200, max: 2200, ticks: [0, 1 / 3, 2 / 3, 1],color: ['#F4664A', '#FAAD14', '#30BF78'],},
+  {
+    measurement: 'TVOC',
+    min: 200,
+    max: 2200,
+    ticks: [0, 1 / 3, 2 / 3, 1],
+    color: ['#F4664A', '#FAAD14', '#30BF78'],
+    unit: '',
+  },
 ]
 
 const MeasurementGauge: React.FC<
@@ -147,6 +156,7 @@ const MeasurementGauge: React.FC<
           },
         },
       },
+      height: 300,
     })
     gauge.render()
 
@@ -154,11 +164,9 @@ const MeasurementGauge: React.FC<
   }, [])
 
   return (
-    <Col xs={6}>
-      <Card title={measurement}>
-        <div ref={ref} />
-      </Card>
-    </Col>
+    <Card title={measurement} style={{height: '100%'}}>
+      <div ref={ref} />
+    </Card>
   )
 }
 
@@ -239,9 +247,15 @@ const RealTimePage: FunctionComponent = () => {
           formatter,
         },
       },
+      height: 300,
     })
     line.render()
     lineRef.current = line
+  }, [])
+
+  // quickfix for grid initial render issue
+  useEffect(() => {
+    setTimeout(() => window.dispatchEvent(new Event('resize')))
   }, [])
 
   return (
@@ -254,21 +268,22 @@ const RealTimePage: FunctionComponent = () => {
         </>
       }
     >
-      <Row gutter={[24, 24]}>
-        <Col xs={24}>
-          <Row gutter={[24, 24]}>
-            {gaugesOptions.map((x, index) => (
-              <MeasurementGauge {...x} key={index} {...{index, gaugesRef}} />
-            ))}
-          </Row>
-        </Col>
-        <Col xs={24}>
-          <Card>
-            <div ref={diagramContainer} />
-          </Card>
-        </Col>
-      </Row>
-      <div style={{width: '100%', height: 200}}></div>
+      <div style={{position: 'relative'}}>
+        <Grid cols={5} rowHeight={400} isResizable={true} onLayoutChange={(...x)=>{console.log(x)}}>
+          {gaugesOptions.map((x, index) => (
+            <div key={index} data-grid={{x: index, y: 0, w: 1, h: 1}}>
+              <div style={{width: '100%', height: '100%'}}>
+                <MeasurementGauge {...x} key={index} {...{index, gaugesRef}} />
+              </div>
+            </div>
+          ))}
+          <div key="lines" data-grid={{x: 0, y: 1, w: 5, h: 1}}>
+            <Card style={{height: '100%'}} title={"All measurements line"}>
+              <div ref={diagramContainer} />
+            </Card>
+          </div>
+        </Grid>
+      </div>
     </PageContent>
   )
 }
