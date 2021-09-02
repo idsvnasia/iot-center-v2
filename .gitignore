@@ -6,4 +6,4 @@ yarn-error.log
 .idea/
 venv/
 **/*_local.sh
-app/telegraf.conf
+app/server/mqtt/telegraf.conf

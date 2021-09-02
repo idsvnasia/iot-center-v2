@@ -178,7 +178,7 @@ const RealTimePage: FunctionComponent = () => {
     )
   )
   const [subscriptions /*, setSubscriptions */] = useState<Subscription[]>([
-    {measurement: 'dummy', tags: ['host=test-host']},
+    {measurement: 'environment', tags: ['clientId=virtual_device']},
   ])
   const diagramContainer = useRef<HTMLDivElement>(undefined!)
   const lineRef = useRef<Line>()
@@ -269,14 +269,7 @@ const RealTimePage: FunctionComponent = () => {
       }
     >
       <div style={{position: 'relative'}}>
-        <Grid
-          cols={5}
-          rowHeight={400}
-          isResizable={true}
-          onLayoutChange={(...x) => {
-            console.log(x)
-          }}
-        >
+        <Grid cols={5} rowHeight={400} isResizable={true}>
           {gaugesOptions.map((x, index) => (
             <div key={index} data-grid={{x: index, y: 0, w: 1, h: 1}}>
               <div style={{width: '100%', height: '100%'}}>

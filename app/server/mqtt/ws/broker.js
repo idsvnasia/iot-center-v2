@@ -38,27 +38,22 @@ async function setupWsBroker(client, router) {
         if (ws.subscription) {
           const filtered = points.filter((point) => {
             for (const s of ws.subscription) {
-              if (s.measurement !== point.measurement) {
-                return false
-              }
+              if (s.measurement !== point.measurement) continue
+
               let tagsMatched = 0
-              for (const filter of s.tags) {
-                for (const tagPair of point.tagPairs) {
+              for (const filter of s.tags)
+                for (const tagPair of point.tagPairs)
                   if (filter === tagPair) {
                     tagsMatched++
+                    break
                   }
-                  break
-                }
-              }
-              if (tagsMatched !== s.tags.length) {
-                return false
-              }
+
+              if (tagsMatched === s.tags.length) return true
             }
-            return true
+            return false
           })
-          if (filtered.length) {
-            ws.send(JSON.stringify(filtered))
-          }
+
+          if (filtered.length) ws.send(JSON.stringify(filtered))
         }
       })
     } catch (e) {

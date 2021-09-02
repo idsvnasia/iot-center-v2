@@ -20,8 +20,7 @@ parentPort.on('message', async (data) => {
   const client = await createClient()
   console.log('Publishing to', MQTT_TOPIC, 'at', MQTT_URL)
   const sendData = async () => {
-    const point = new Point('dummy')
-    point.tag('host', 'test-host')
+    const point = new Point('environment')
     const now = Date.now()
     Object.entries(data.measurements).forEach(([name, options]) => {
       point.floatField(
@@ -29,9 +28,16 @@ parentPort.on('message', async (data) => {
         generateValue(options.period, options.min, options.max, now)
       )
     })
+    point
+      .tag('TemperatureSensor', 'virtual_TemperatureSensor')
+      .tag('HumiditySensor', 'virtual_HumiditySensor')
+      .tag('PressureSensor', 'virtual_PressureSensor')
+      .tag('CO2Sensor', 'virtual_CO2Sensor')
+      .tag('TVOCSensor', 'virtual_TVOCSensor')
+      .tag('GPSSensor', 'virtual_GPSSensor')
+      .tag('clientId', 'virtual_device')
     point.timestamp(now * 10 ** 6)
     const influxLineProtocolData = point.toLineProtocol()
-    console.log(influxLineProtocolData)
     try {
       await client.publish(MQTT_TOPIC, influxLineProtocolData)
     } catch (e) {
