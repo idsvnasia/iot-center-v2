@@ -60,7 +60,7 @@ const RealTimeSettingsPage: FunctionComponent = () => {
   const addNewMeasure = () => {
     if (newMeasureName && newMeasureName !== '' && settings?.measurements)
       settings.measurements[newMeasureName!] = {...measureDefaults}
-    setNewMeasureName(undefined);
+    setNewMeasureName(undefined)
   }
 
   return (

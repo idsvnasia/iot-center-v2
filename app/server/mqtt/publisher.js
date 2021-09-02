@@ -29,7 +29,7 @@ parentPort.on('message', async (data) => {
         generateValue(options.period, options.min, options.max, now)
       )
     })
-    point.timestamp(new Date().getTime())
+    point.timestamp(now * 10 ** 6)
     const influxLineProtocolData = point.toLineProtocol()
     console.log(influxLineProtocolData)
     try {
