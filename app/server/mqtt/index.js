@@ -30,6 +30,10 @@ async function mqttRouter() {
     res.json(publisherSettings)
   })
 
+  router.get('/settings/defaults', async (req, res) => {
+    res.json(publisherDefaultSettings)
+  })
+
   router.post('/settings', async (req, res) => {
     publisherSettings = JSON.parse(req.body)
     worker.postMessage(publisherSettings)
