@@ -209,7 +209,7 @@ const RealTimePage: FunctionComponent = () => {
 
         for (const p of obj) {
           const fields = p.fields
-          const time = +p.timestamp
+          const time = Math.floor(+p.timestamp / 10 ** 6)
           for (const key in fields) {
             const value = fields[key] as number
             dataArr.push({value, key, time})
@@ -269,7 +269,14 @@ const RealTimePage: FunctionComponent = () => {
       }
     >
       <div style={{position: 'relative'}}>
-        <Grid cols={5} rowHeight={400} isResizable={true} onLayoutChange={(...x)=>{console.log(x)}}>
+        <Grid
+          cols={5}
+          rowHeight={400}
+          isResizable={true}
+          onLayoutChange={(...x) => {
+            console.log(x)
+          }}
+        >
           {gaugesOptions.map((x, index) => (
             <div key={index} data-grid={{x: index, y: 0, w: 1, h: 1}}>
               <div style={{width: '100%', height: '100%'}}>
@@ -278,7 +285,7 @@ const RealTimePage: FunctionComponent = () => {
             </div>
           ))}
           <div key="lines" data-grid={{x: 0, y: 1, w: 5, h: 1}}>
-            <Card style={{height: '100%'}} title={"All measurements line"}>
+            <Card style={{height: '100%'}} title={'All measurements line'}>
               <div ref={diagramContainer} />
             </Card>
           </div>

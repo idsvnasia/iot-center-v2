@@ -11,4 +11,7 @@ SET INFLUX_URL=
 SET INFLUX_TOKEN=
 SET INFLUX_ORG=
 
+REM SET MQTT_TOPIC=iot_center
+REM SET MQTT_URL=mqtt://localhost:1883
+
 yarn dev

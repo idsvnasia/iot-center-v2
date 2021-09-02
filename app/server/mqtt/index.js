@@ -5,7 +5,7 @@ const setupWsBroker = require('./ws/broker')
 const {Worker} = require('worker_threads')
 
 const publisherDefaultSettings = {
-  running: false,
+  running: true,
   sendInterval: 100,
   measurements: {
     Temperature: {period: 30, min: 0, max: 40},
@@ -25,6 +25,8 @@ async function mqttRouter() {
   const router = express.Router()
   // bigger bodies are expected
   router.use(express.text({limit: '10mb'}))
+
+  worker.postMessage(publisherDefaultSettings)
 
   router.get('/settings', async (req, res) => {
     res.json(publisherSettings)

@@ -16,4 +16,7 @@ export INFLUX_URL=
 export INFLUX_TOKEN=
 export INFLUX_ORG=
 
+# export MQTT_TOPIC=iot_center
+# export MQTT_URL=mqtt://localhost:1883
+
 yarn dev
