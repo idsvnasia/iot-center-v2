@@ -8,4 +8,4 @@ venv/
 **/*_local.sh
 
 custom_dev.h
-app/telegraf.conf
+app/server/mqtt/telegraf.conf
