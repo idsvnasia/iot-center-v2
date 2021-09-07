@@ -1,6 +1,7 @@
 #include <InfluxDbClient.h>   //InfluxDB client for Arduino
 #include <InfluxDbCloud.h>    //For Influx Cloud support
 #include "cbuffer.h"
+#include "client_arduino.h"
 
 extern String tempSens, humSens, presSens, co2Sens, tvocSens, gpsSens;
 
@@ -13,17 +14,20 @@ InfluxDBClient clientDB;
 // Data point
 Point envData("environment");
 
-void initInfluxDB( const String& url, const String& org, const String& bucket, const String& token, const String& deviceID, const char* device, const char* version, bool connectionReuse) {
+void initInfluxDB( bool connect, const String& url, const String& org, const String& bucket, const String& token, const String& deviceID, const char* device, const char* version, bool connectionReuse) {
   // Set InfluxDB parameters
   clientDB.setConnectionParams(url.c_str(), org.c_str(), bucket.c_str(), token.c_str(), InfluxDbCloud2CACert);
   
-  /*WriteOptions wrOpt;
+  WriteOptions wrOpt;
   wrOpt.writePrecision( WRITE_PRECISION).batchSize( MAX_BATCH_SIZE).bufferSize( WRITE_BUFFER_SIZE).addDefaultTag( "clientId", deviceID).addDefaultTag( "Device", device).addDefaultTag( "Version", version);
   clientDB.setWriteOptions(wrOpt);
 
   HTTPOptions htOpt;
   htOpt.connectionReuse(connectionReuse);
-  clientDB.setHTTPOptions(htOpt);*/
+  clientDB.setHTTPOptions(htOpt);
+
+  if (!connect)
+    return;
 
   // Check InfluxDB server connection
   if (clientDB.validateConnection()) {
@@ -43,7 +47,7 @@ void addSensorTag( const char* tagName, float value, String sensor) {
 }
 
 // Convert measured values into InfluxDB point
-void measurementToPoint( tMeasurement* ppm, Point& point) {
+void _measurementToPoint( tMeasurement* ppm, Point& point) {
   // Clear tags (except default ones) and fields
   envData.clearTags();
   envData.clearFields();
@@ -69,8 +73,8 @@ void measurementToPoint( tMeasurement* ppm, Point& point) {
   point.addField("Lon", ppm->longitude, 6);
 }
 
-void setMeasurement( tMeasurement* ppm) {
-  measurementToPoint( ppm, envData);
+void measurementToLineProtocol( tMeasurement* ppm) {
+  _measurementToPoint( ppm, envData);
 }
 
 String getMeasurementStr() {
