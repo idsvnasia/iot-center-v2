@@ -1,11 +1,16 @@
-import {Card, Col, Row} from 'antd'
-import {Line, Gauge} from '@antv/g2plot'
-import React, {FunctionComponent, useEffect, useState} from 'react'
+import {Card} from 'antd'
+import {Line, Gauge, GaugeOptions} from '@antv/g2plot'
+import React, {FunctionComponent, useState} from 'react'
 import PageContent from './PageContent'
 import {useRef} from 'react'
 import {useCallback} from 'react'
-import ReactGridLayout, {WidthProvider, Layout} from 'react-grid-layout'
-const Grid = WidthProvider(ReactGridLayout)
+import {
+  DiagramEntryPoint,
+  G2Plot,
+  useG2Plot,
+  useWebSocket,
+} from '../util/realtimeUtils'
+import GridFixed from '../util/GridFixed'
 
 const maxSize = 400
 
@@ -15,68 +20,33 @@ const host =
     : window.location.host
 const wsAddress = `ws://${host}/mqtt`
 
-interface Point {
+const useRealtimeData = (
+  subscriptions: Subscription[],
+  onReceivePoints: (pts: Point[]) => void
+) => {
+  const wsInit = useCallback<(ws: WebSocket) => void>(
+    (ws) => {
+      ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
+      ws.onmessage = (response) =>
+        onReceivePoints(JSON.parse(response.data) as Point[])
+    },
+    [subscriptions, onReceivePoints]
+  )
+  useWebSocket(wsInit, wsAddress)
+}
+
+type Point = {
   measurement: string
   tagPairs: string[]
   fields: Record<string, number | boolean | string>
   timestamp: string
 }
-interface Subscription {
+type Subscription = {
   measurement: string
   tags: string[]
 }
-interface DiagramEntryPoint {
-  value: number
-  time: number
-  key: string
-}
-
-const formatter = (v: string) => new Date(+v).toLocaleTimeString()
-
-const useRafOnce = (callback: () => void) => {
-  const calledRef = useRef(false)
-
-  return () => {
-    if (calledRef.current) return
-    calledRef.current = true
-    requestAnimationFrame(() => {
-      calledRef.current = false
-      callback()
-    })
-  }
-}
-
-const useWebSocket = (callback: (ws: WebSocket) => void, url: string) => {
-  const wsRef = useRef<WebSocket>()
-
-  const startListening = useCallback(() => {
-    console.log('starting WebSocket')
-    wsRef.current = new WebSocket(url)
-    callback(wsRef.current)
-  }, [callback, url])
-
-  useEffect(() => {
-    startListening()
-    return () => wsRef.current?.close()
-  }, [startListening])
-
-  useEffect(() => {
-    // reconnect a broken WS connection
-    const checker = setInterval(() => {
-      if (
-        wsRef.current &&
-        (wsRef.current.readyState === WebSocket.CLOSING ||
-          wsRef.current.readyState === WebSocket.CLOSED)
-      ) {
-        startListening()
-      }
-    }, 2000)
-    return () => clearInterval(checker)
-  }, [startListening])
-}
 
 type MeasurementGaugeOptions = {
-  measurement: string
   min: number
   max: number
   ticks: number[]
@@ -84,179 +54,119 @@ type MeasurementGaugeOptions = {
   unit: string
 }
 
-const gaugesOptions: MeasurementGaugeOptions[] = [
-  {
-    measurement: 'Temperature',
+const gaugesOptions: Record<string, MeasurementGaugeOptions> = {
+  Temperature: {
     min: -10,
     max: 50,
     ticks: [0, 0.2, 0.8, 1],
     color: ['#655ae6', 'lightgreen', '#ff5c5c'],
     unit: '°C',
   },
-  {
-    measurement: 'Humidity',
+  Humidity: {
     min: 0,
     max: 100,
     ticks: [0, 0.1, 0.9, 1],
     color: ['#ff5c5c', 'lightgreen', '#ff5c5c'],
     unit: '%',
   },
-  {
-    measurement: 'Pressure',
+  Pressure: {
     min: 800,
     max: 1100,
     ticks: [0, 0.25, 0.9, 1],
     color: ['lightgreen', '#dbeb2a', 'red'],
     unit: ' hPa',
   },
-  {
-    measurement: 'CO2',
+  CO2: {
     min: 300,
     max: 3500,
     ticks: [0, 0.1, 0.9, 1],
     color: ['#ff5c5c', 'lightgreen', '#ff5c5c'],
     unit: ' ppm',
   },
-  {
-    measurement: 'TVOC',
+  TVOC: {
     min: 200,
     max: 2200,
     ticks: [0, 1 / 3, 2 / 3, 1],
     color: ['#F4664A', '#FAAD14', '#30BF78'],
     unit: '',
   },
-]
-
-const MeasurementGauge: React.FC<
-  MeasurementGaugeOptions & {
-    index: number
-    gaugesRef: React.MutableRefObject<Gauge[]>
-  }
-> = ({min, max, ticks, color, unit, measurement, index, gaugesRef}) => {
-  const ref = useRef<HTMLDivElement>(undefined!)
-
-  useEffect(() => {
-    const gauge = new Gauge(ref.current, {
-      percent: 0.75,
-      range: {
-        ticks,
-        color,
-      },
-      axis: {
-        label: {
-          formatter: (v) => +v * (max - min) + min,
-        },
-      },
-      statistic: {
-        content: {
-          formatter: (x) => {
-            if (!x) return ''
-            const {percent} = x
-            return `${(+percent * (max - min) + min).toFixed(0)}${unit}`
-          },
-        },
-      },
-      height: 300,
-    })
-    gauge.render()
-
-    gaugesRef.current[index] = gauge
-  }, [])
-
-  return (
-    <Card title={measurement} style={{height: '100%'}}>
-      <div ref={ref} />
-    </Card>
-  )
 }
 
-const RealTimePage: FunctionComponent = () => {
-  const dataRef = useRef<DiagramEntryPoint[]>([])
-  const dataGaugeRef = useRef<Record<string, {time: number; value: number}>>(
-    Object.fromEntries(
-      gaugesOptions.map(({measurement}) => [measurement, {time: 0, value: 0}])
-    )
+const gaugesPlotOptions: Record<
+  string,
+  Omit<GaugeOptions, 'percent'>
+> = Object.fromEntries(
+  Object.entries(gaugesOptions).map(
+    ([measurement, {ticks, color, max, min, unit}]) => [
+      measurement,
+      {
+        range: {
+          ticks,
+          color,
+        },
+        axis: {
+          label: {
+            formatter: (v) => +v * (max - min) + min,
+          },
+        },
+        statistic: {
+          content: {
+            formatter: (x) =>
+              x ? `${(+x.percent * (max - min) + min).toFixed(0)}${unit}` : '',
+          },
+        },
+        height: 300,
+      },
+    ]
   )
+)
+
+const RealTimePage: FunctionComponent = () => {
   const [subscriptions /*, setSubscriptions */] = useState<Subscription[]>([
     {measurement: 'environment', tags: ['clientId=virtual_device']},
   ])
-  const diagramContainer = useRef<HTMLDivElement>(undefined!)
-  const lineRef = useRef<Line>()
-  const gaugesRef = useRef<Gauge[]>(gaugesOptions.map((x) => undefined!))
-
-  const invalidate = useRafOnce(() => {
-    lineRef.current?.changeData(dataRef.current)
-    const gauges = gaugesRef.current
-    for (const i in gauges) {
-      const gaugeOpts = gaugesOptions[i]
-      const gauge = gauges[i]
-      const value = dataGaugeRef.current[gaugeOpts.measurement].value
-
-      const {min, max} = gaugeOpts
-      const mappedValue = (value - min) / (max - min)
-
-      gauge.changeData(mappedValue)
-    }
+  const gaugeUpdatesRef = useRef<Record<string, (newData: number) => void>>({})
+  const gaugeLastDataTimesRef = useRef<Record<string, number>>(
+    Object.fromEntries(Object.keys(gaugesOptions).map((x) => [x, -1]))
+  )
+  const plot = useG2Plot(Line, {
+    height: 300,
   })
 
-  const wsInit = useCallback<(ws: WebSocket) => void>(
-    (ws) => {
-      ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
-      ws.onmessage = (response) => {
-        const obj = JSON.parse(response.data) as Point[]
-        const dataArr = dataRef.current
-        const dataGauge = dataGaugeRef.current
+  const updateGaugeData = (measurement: string, time: number, data: number) => {
+    const gaugeLastTimes = gaugeLastDataTimesRef.current
+    const gaugeUpdates = gaugeUpdatesRef.current
 
-        for (const p of obj) {
-          const fields = p.fields
-          const time = Math.floor(+p.timestamp / 10 ** 6)
-          for (const key in fields) {
-            const value = fields[key] as number
-            dataArr.push({value, key, time})
+    if (gaugeLastTimes[measurement] < time) {
+      const {min, max} = gaugesOptions[measurement]
+      gaugeUpdates[measurement]?.((data - min) / (max - min))
+    }
+  }
 
-            const gaugeObj = dataGauge[key]
-            if (gaugeObj && gaugeObj.time < time) {
-              gaugeObj.time = time
-              gaugeObj.value = value
-            }
-          }
-        }
+  const updatePoints = useCallback((points: Point[]) => {
+    const newData: DiagramEntryPoint[] = []
 
-        // todo: uses 5 fields, find alternative universal solution
-        const overflow = dataArr.length - maxSize * 5
-        if (overflow > 0) dataArr.splice(0, overflow)
+    for (const p of points) {
+      const fields = p.fields
+      const time = Math.floor(+p.timestamp / 10 ** 6)
 
-        invalidate()
+      for (const key in fields) {
+        const value = fields[key] as number
+        newData.push({key, time, value})
+        updateGaugeData(key, time, value)
       }
-    },
-    [subscriptions]
-  )
-  useWebSocket(wsInit, wsAddress)
+    }
 
-  useEffect(() => {
-    if (!diagramContainer.current) return
-    const container = diagramContainer.current
-    const line = new Line(container, {
-      data: dataRef.current,
-      xField: 'time',
-      yField: 'value',
-      seriesField: 'key',
-      animation: false,
-      xAxis: {
-        label: {
-          formatter,
-        },
-      },
-      height: 300,
+    plot.update((dataArr) => {
+      dataArr.push(...newData)
+      // todo: only for 5 entries per point, find alternative universal solution
+      const overflow = dataArr.length - maxSize * 5
+      if (overflow > 0) dataArr.splice(0, overflow)
+      plot.update(dataArr)
     })
-    line.render()
-    lineRef.current = line
   }, [])
 
-  // quickfix for grid initial render issue
-  useEffect(() => {
-    setTimeout(() => window.dispatchEvent(new Event('resize')))
-  }, [])
+  useRealtimeData(subscriptions, updatePoints)
 
   return (
     <PageContent
@@ -268,22 +178,34 @@ const RealTimePage: FunctionComponent = () => {
         </>
       }
     >
-      <div style={{position: 'relative'}}>
-        <Grid cols={5} rowHeight={400} isResizable={true}>
-          {gaugesOptions.map((x, index) => (
-            <div key={index} data-grid={{x: index, y: 0, w: 1, h: 1}}>
-              <div style={{width: '100%', height: '100%'}}>
-                <MeasurementGauge {...x} key={index} {...{index, gaugesRef}} />
-              </div>
-            </div>
-          ))}
-          <div key="lines" data-grid={{x: 0, y: 1, w: 5, h: 1}}>
-            <Card style={{height: '100%'}} title={'All measurements line'}>
-              <div ref={diagramContainer} />
+      <GridFixed cols={5} rowHeight={400} isResizable={true}>
+        {Object.entries(gaugesPlotOptions).map(
+          ([measurement, options], index) => (
+            <Card
+              key={index}
+              data-grid={{x: index, y: 0, w: 1, h: 1}}
+              style={{height: '100%'}}
+              title={measurement}
+            >
+              <G2Plot
+                type={Gauge}
+                onUpdaterChange={(updater) =>
+                  (gaugeUpdatesRef.current[measurement] = updater)
+                }
+                options={options}
+              />
             </Card>
-          </div>
-        </Grid>
-      </div>
+          )
+        )}
+        <Card
+          key="lines"
+          data-grid={{x: 0, y: 0, w: 5, h: 1}}
+          style={{height: '100%'}}
+          title={'All measurements line'}
+        >
+          {plot.element}
+        </Card>
+      </GridFixed>
     </PageContent>
   )
 }
