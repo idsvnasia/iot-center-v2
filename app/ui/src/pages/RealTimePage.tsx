@@ -146,34 +146,37 @@ const RealTimePage: FunctionComponent = () => {
     }
   }
 
-  const updatePoints = useCallback((points: Point[]) => {
-    const newData: DiagramEntryPoint[] = []
+  const updatePoints = useCallback(
+    (points: Point[]) => {
+      const newData: DiagramEntryPoint[] = []
 
-    for (const p of points) {
-      const fields = p.fields
-      const time = Math.floor(+p.timestamp / 10 ** 6)
+      for (const p of points) {
+        const fields = p.fields
+        const time = Math.floor(+p.timestamp / 10 ** 6)
 
-      for (const key in fields) {
-        const value = fields[key] as number
-        newData.push({key, time, value})
-        updateGaugeData(key, time, value)
-      }
-    }
-
-    // todo: ensure data sorted by time
-    plot.update((dataArr: DiagramEntryPoint[]) => {
-      const now = Date.now();
-      const cutTime = now - retentionTime;
-
-      for (let i = dataArr.length;i--;){
-        if (dataArr[i].time < cutTime){
-          dataArr.splice(i, 1)
+        for (const key in fields) {
+          const value = fields[key] as number
+          newData.push({key, time, value})
+          updateGaugeData(key, time, value)
         }
       }
 
-      dataArr.push(...newData);
-    })
-  }, [plot])
+      // todo: ensure data sorted by time
+      plot.update((dataArr: DiagramEntryPoint[]) => {
+        const now = Date.now()
+        const cutTime = now - retentionTime
+
+        for (let i = dataArr.length; i--; ) {
+          if (dataArr[i].time < cutTime) {
+            dataArr.splice(i, 1)
+          }
+        }
+
+        dataArr.push(...newData)
+      })
+    },
+    [plot]
+  )
 
   useRealtimeData(subscriptions, updatePoints)
 
