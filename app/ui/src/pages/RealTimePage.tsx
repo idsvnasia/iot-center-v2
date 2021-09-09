@@ -12,7 +12,8 @@ import {
 } from '../util/realtimeUtils'
 import GridFixed from '../util/GridFixed'
 
-const maxSize = 400
+// todo: setable on page
+const retentionTime = 10000
 
 const host =
   process.env.NODE_ENV === `development`
@@ -159,12 +160,18 @@ const RealTimePage: FunctionComponent = () => {
       }
     }
 
-    plot.update((dataArr) => {
-      dataArr.push(...newData)
-      // todo: only for 5 entries per point, find alternative universal solution
-      const overflow = dataArr.length - maxSize * 5
-      if (overflow > 0) dataArr.splice(0, overflow)
-      plot.update(dataArr)
+    // todo: ensure data sorted by time
+    plot.update((dataArr: DiagramEntryPoint[]) => {
+      const now = Date.now();
+      const cutTime = now - retentionTime;
+
+      for (let i = dataArr.length;i--;){
+        if (dataArr[i].time < cutTime){
+          dataArr.splice(i, 1)
+        }
+      }
+
+      dataArr.push(...newData);
     })
   }, [plot])
 
