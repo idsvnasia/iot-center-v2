@@ -96,17 +96,23 @@ export const useG2Plot = <
     plotRef.current!.render()
   }, [])
 
-  // todo: redrawBase should be called when draw optins changes
-  const redrawBase = useRafOnce(() =>{
-    plotRef.current?.update({
+  const redraw = useRafOnce(() => {
+    const data = dataRef.current;
+
+    plotRef.current?.update?.({
       ...g2PlotDefaults,
       ...opts,
+      ...(typeof data === 'number'
+        ? {percent: data}
+        : {data}),
     })
   }, [opts])
 
-  const invalidate = useRafOnce(() => {
+  useEffect(redraw, [redraw])
+
+  const invalidate = useRafOnce(() =>
     plotRef.current?.changeData(dataRef.current)
-  }, [])
+  )
 
   const update = (
     newData: PlotType extends Gauge
@@ -125,7 +131,9 @@ export const useG2Plot = <
     invalidate()
   }
 
-  return {element, update} as const
+  const plotObjRef = useRef({element, update} as const)
+
+  return plotObjRef.current
 }
 
 type G2PlotParams<PlotConstructor extends new (...args: any[]) => Plot<any>> = {

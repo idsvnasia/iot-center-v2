@@ -129,9 +129,11 @@ const RealTimePage: FunctionComponent = () => {
   const gaugeLastDataTimesRef = useRef<Record<string, number>>(
     Object.fromEntries(Object.keys(gaugesOptions).map((x) => [x, -1]))
   )
-  const plot = useG2Plot(Line, {
+
+  const [lineOptions /*, setLineOptions */] = useState({
     height: 300,
   })
+  const plot = useG2Plot(Line, lineOptions)
 
   const updateGaugeData = (measurement: string, time: number, data: number) => {
     const gaugeLastTimes = gaugeLastDataTimesRef.current
@@ -164,7 +166,7 @@ const RealTimePage: FunctionComponent = () => {
       if (overflow > 0) dataArr.splice(0, overflow)
       plot.update(dataArr)
     })
-  }, [])
+  }, [plot])
 
   useRealtimeData(subscriptions, updatePoints)
 
