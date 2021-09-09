@@ -97,14 +97,12 @@ export const useG2Plot = <
   }, [])
 
   const redraw = useRafOnce(() => {
-    const data = dataRef.current;
+    const data = dataRef.current
 
     plotRef.current?.update?.({
       ...g2PlotDefaults,
       ...opts,
-      ...(typeof data === 'number'
-        ? {percent: data}
-        : {data}),
+      ...(typeof data === 'number' ? {percent: data} : {data}),
     })
   }, [opts])
 
