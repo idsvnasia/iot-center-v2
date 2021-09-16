@@ -34,6 +34,12 @@ async function setupWsBroker(client, router) {
       const points = MQTT_PARSERS[topic](topic, buffer)
       if (!points || points.length === 0) return
 
+      // todo: add fields filtering logic instead
+      for (const p of points) {
+        const fields = Object.keys(p.fields)
+        for (const f of fields) p.tagPairs.push('_field=' + f)
+      }
+
       forEachWebSocket((ws) => {
         if (ws.subscription) {
           const filtered = points.filter((point) => {

@@ -1,5 +1,6 @@
 import {Gauge, Plot} from '@antv/g2plot'
 import React, {useCallback, useEffect, useRef} from 'react'
+import {simplify} from './simplyfi'
 
 export type DiagramEntryPoint = {
   value: number
@@ -64,12 +65,8 @@ const g2PlotDefaults = {
   seriesField: 'key',
   animation: false,
   xAxis: {
-    label: {
-      formatter,
-    },
-  },
-  tooltip: {
-    title: formatter,
+    type: 'time',
+    mask: 'HH:MM:ss',
   },
 }
 
@@ -92,6 +89,10 @@ export const useG2Plot = <
     plotRef.current = new ctor(elementRef.current, {
       ...g2PlotDefaults,
       ...opts,
+      xAxis: {
+        ...g2PlotDefaults?.xAxis,
+        ...opts?.xAxis,
+      },
     }) as any
     plotRef.current!.render()
   }, [])
@@ -108,9 +109,70 @@ export const useG2Plot = <
 
   useEffect(redraw, [redraw])
 
-  const invalidate = useRafOnce(() =>
-    plotRef.current?.changeData(dataRef.current)
-  )
+  const invalidate = useRafOnce(() => {
+    const data = dataRef.current
+    if (!data) return
+    if (typeof data === 'number') {
+      plotRef.current?.changeData?.(data)
+    } else {
+      const lines: Record<string, {xs: number[]; ys: number[]}> = {}
+
+      for (const d of data) {
+        let obj = lines[d.key]
+        if (!obj) {
+          obj = lines[d.key] = {xs: [], ys: []}
+        }
+        obj.xs.push(d.time)
+        obj.ys.push(d.value)
+      }
+
+      for (const key in lines) {
+        const now = Date.now()
+        const {xs, ys} = lines[key]
+        const newX: number[] = []
+        const newY: number[] = []
+
+        const breakpoint1 = xs.findIndex((x) => x > now - 10000)
+
+        if (breakpoint1 > 0) {
+          const [bp1xs, bp1ys] = simplify(
+            xs.slice(0, breakpoint1),
+            ys.slice(0, breakpoint1),
+            100
+          )
+
+          pushBigArray(newX, bp1xs)
+          pushBigArray(newY, bp1ys)
+
+          pushBigArray(newX, xs.slice(breakpoint1))
+          pushBigArray(newY, ys.slice(breakpoint1))
+        } else {
+          pushBigArray(newX, xs)
+          pushBigArray(newY, ys)
+        }
+
+        // if (xs.length !== newX.length)
+        // {
+        //   console.log(`shortened by: ${xs.length - newX.length}  from: ${xs.length}`)
+        // }
+        lines[key] = {xs: newX, ys: newY}
+      }
+
+      const newArr: DiagramEntryPoint[] = []
+
+      for (const key in lines) {
+        const {xs, ys} = lines[key]
+        for (let i = 0; i < xs.length; i++) {
+          const time = xs[i]
+          const value = ys[i]
+
+          newArr.push({key, time, value})
+        }
+      }
+
+      plotRef.current?.changeData(newArr)
+    }
+  })
 
   const update = (
     newData: PlotType extends Gauge
@@ -160,4 +222,20 @@ export const G2Plot = <
   }, [update])
 
   return <>{element}</>
+}
+
+/**
+ * using spread operator with [Array].push
+ * function can exceed callback for big arrays.
+ * Use this method instead
+ */
+export const pushBigArray = <T,>(self: T[], arr2: T[]) => {
+  const arr2len = arr2.length
+  const newLen = self.length + arr2len
+  self.length = newLen
+  let i = newLen
+  for (let j = arr2len; j--; ) {
+    i--
+    self[i] = arr2[j]
+  }
 }
