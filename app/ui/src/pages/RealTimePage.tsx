@@ -161,6 +161,7 @@ const RealTimePage: FunctionComponent = () => {
         }
       }
 
+      // todo: move this into realtime utils
       // todo: ensure data sorted by time
       plot.update((dataArr: DiagramEntryPoint[]) => {
         const now = Date.now()
