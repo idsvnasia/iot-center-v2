@@ -70,6 +70,31 @@ const g2PlotDefaults = {
   },
 }
 
+type MinAndMax = {min: number; max: number}
+const getMinAndMax = (arr: number[]): MinAndMax => {
+  let min = Infinity
+  let max = -Infinity
+  for (const i of arr) {
+    if (min > i) min = i
+    if (max < i) max = i
+  }
+  return {min, max}
+}
+
+const normalize = (
+  arr: number[],
+  minAndMax: MinAndMax,
+  inverse: boolean = false
+) => {
+  const {max, min} = minAndMax
+  const dist = max - min
+  if (!inverse) {
+    return arr.map((x) => (x - min) / dist)
+  } else {
+    return arr.map((x) => x * dist + min)
+  }
+}
+
 export const useG2Plot = <
   PlotConstructor extends new (...args: any[]) => Plot<any>
 >(
@@ -110,6 +135,7 @@ export const useG2Plot = <
   useEffect(redraw, [redraw])
 
   const invalidate = useRafOnce(() => {
+    // todo: don't redraw when window not visible
     const data = dataRef.current
     if (!data) return
     if (typeof data === 'number') {
@@ -135,11 +161,20 @@ export const useG2Plot = <
         const breakpoint1 = xs.findIndex((x) => x > now - 10000)
 
         if (breakpoint1 > 0) {
-          const [bp1xs, bp1ys] = simplify(
-            xs.slice(0, breakpoint1),
-            ys.slice(0, breakpoint1),
-            100
+          const oldX = xs.slice(0, breakpoint1)
+          const oldY = ys.slice(0, breakpoint1)
+
+          const xMinAndMax = getMinAndMax(xs)
+          const yMinAndMax = getMinAndMax(ys)
+
+          const [bp1xsNormalized, bp1ysNormalized] = simplify(
+            normalize(oldX, xMinAndMax),
+            normalize(oldY, yMinAndMax),
+            .05
           )
+
+          const bp1xs = normalize(bp1xsNormalized, xMinAndMax, true)
+          const bp1ys = normalize(bp1ysNormalized, yMinAndMax, true)
 
           pushBigArray(newX, bp1xs)
           pushBigArray(newY, bp1ys)

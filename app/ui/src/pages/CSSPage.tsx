@@ -293,15 +293,7 @@ const Cell: React.FC<{
           const percent = (e.value - min) / (max - min)
           plot.update(percent as any)
         }
-    } else
-      plot.update((d) =>
-        pushBigArray(
-          d,
-          field === 'EngineCoolantTemperature'
-            ? entries.map((x) => ({...x, value: x.value * 1000}))
-            : entries
-        )
-      )
+    } else plot.update((d) => pushBigArray(d, entries))
   })
 
   useEffect(() => {
