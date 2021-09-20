@@ -1,6 +1,63 @@
 import {Gauge, Plot} from '@antv/g2plot'
 import React, {useCallback, useEffect, useRef} from 'react'
-import {simplify} from './simplyfi'
+import {simplifyForNormalizedData} from './simplyfi'
+
+const BREAKPOINTS_DEFS: {
+  timeThreshold: number
+  omega: number
+}[] = [
+  {timeThreshold: 10 * 1000, omega: 0.01},
+  {timeThreshold: 20 * 1000, omega: 0.02},
+  {timeThreshold: 60 * 1000, omega: 0.03},
+]
+BREAKPOINTS_DEFS.sort((a, b) => -(a.timeThreshold - b.timeThreshold))
+
+type MinAndMax = {min: number; max: number}
+const getMinAndMax = (arr: number[]): MinAndMax => {
+  let min = Infinity
+  let max = -Infinity
+  for (const i of arr) {
+    if (min > i) min = i
+    if (max < i) max = i
+  }
+  return {min, max}
+}
+
+const normalize = (
+  arr: number[],
+  minAndMax: MinAndMax,
+  inverse: boolean = false
+) => {
+  const {max, min} = minAndMax
+  const dist = max - min
+  if (!inverse) {
+    return arr.map((x) => (x - min) / dist)
+  } else {
+    return arr.map((x) => x * dist + min)
+  }
+}
+
+/** simplify that has data normalization implemented */
+const simplify = (xs: number[], ys: number[], epsilon: number) => {
+  if (xs.length < 2) return [xs, ys] as const
+
+  const xMinAndMax = getMinAndMax(xs)
+  const yMinAndMax = getMinAndMax(ys)
+
+  const [
+    xsSimplifiedNormalized,
+    ysSimplifiedNormalized,
+  ] = simplifyForNormalizedData(
+    normalize(xs, xMinAndMax),
+    normalize(ys, yMinAndMax),
+    epsilon
+  )
+
+  const xsSimplified = normalize(xsSimplifiedNormalized, xMinAndMax, true)
+  const ysSimplified = normalize(ysSimplifiedNormalized, yMinAndMax, true)
+
+  return [xsSimplified, ysSimplified] as const
+}
 
 export type DiagramEntryPoint = {
   value: number
@@ -70,31 +127,6 @@ const g2PlotDefaults = {
   },
 }
 
-type MinAndMax = {min: number; max: number}
-const getMinAndMax = (arr: number[]): MinAndMax => {
-  let min = Infinity
-  let max = -Infinity
-  for (const i of arr) {
-    if (min > i) min = i
-    if (max < i) max = i
-  }
-  return {min, max}
-}
-
-const normalize = (
-  arr: number[],
-  minAndMax: MinAndMax,
-  inverse: boolean = false
-) => {
-  const {max, min} = minAndMax
-  const dist = max - min
-  if (!inverse) {
-    return arr.map((x) => (x - min) / dist)
-  } else {
-    return arr.map((x) => x * dist + min)
-  }
-}
-
 export const useG2Plot = <
   PlotConstructor extends new (...args: any[]) => Plot<any>
 >(
@@ -140,73 +172,77 @@ export const useG2Plot = <
     if (!data) return
     if (typeof data === 'number') {
       plotRef.current?.changeData?.(data)
-    } else {
-      const lines: Record<string, {xs: number[]; ys: number[]}> = {}
-
-      for (const d of data) {
-        let obj = lines[d.key]
-        if (!obj) {
-          obj = lines[d.key] = {xs: [], ys: []}
-        }
-        obj.xs.push(d.time)
-        obj.ys.push(d.value)
-      }
-
-      for (const key in lines) {
-        const now = Date.now()
-        const {xs, ys} = lines[key]
-        const newX: number[] = []
-        const newY: number[] = []
-
-        const breakpoint1 = xs.findIndex((x) => x > now - 10000)
-
-        if (breakpoint1 > 0) {
-          const oldX = xs.slice(0, breakpoint1)
-          const oldY = ys.slice(0, breakpoint1)
-
-          const xMinAndMax = getMinAndMax(xs)
-          const yMinAndMax = getMinAndMax(ys)
-
-          const [bp1xsNormalized, bp1ysNormalized] = simplify(
-            normalize(oldX, xMinAndMax),
-            normalize(oldY, yMinAndMax),
-            .05
-          )
-
-          const bp1xs = normalize(bp1xsNormalized, xMinAndMax, true)
-          const bp1ys = normalize(bp1ysNormalized, yMinAndMax, true)
-
-          pushBigArray(newX, bp1xs)
-          pushBigArray(newY, bp1ys)
-
-          pushBigArray(newX, xs.slice(breakpoint1))
-          pushBigArray(newY, ys.slice(breakpoint1))
-        } else {
-          pushBigArray(newX, xs)
-          pushBigArray(newY, ys)
-        }
-
-        // if (xs.length !== newX.length)
-        // {
-        //   console.log(`shortened by: ${xs.length - newX.length}  from: ${xs.length}`)
-        // }
-        lines[key] = {xs: newX, ys: newY}
-      }
-
-      const newArr: DiagramEntryPoint[] = []
-
-      for (const key in lines) {
-        const {xs, ys} = lines[key]
-        for (let i = 0; i < xs.length; i++) {
-          const time = xs[i]
-          const value = ys[i]
-
-          newArr.push({key, time, value})
-        }
-      }
-
-      plotRef.current?.changeData(newArr)
+      return
     }
+    if ((ctor as any) === Gauge) {
+      if (!data.length) return
+      let dataLast: DiagramEntryPoint = data[0]
+      data.forEach((x) => {
+        if (x.time > dataLast.time) {
+          dataLast = x
+        }
+      })
+      console.log(`aplying last data ${dataLast.value}`)
+      plotRef.current?.changeData?.(dataLast.value)
+
+      return
+    }
+    const lines: Record<string, {xs: number[]; ys: number[]}> = {}
+
+    for (const d of data) {
+      let obj = lines[d.key]
+      if (!obj) {
+        obj = lines[d.key] = {xs: [], ys: []}
+      }
+      obj.xs.push(d.time)
+      obj.ys.push(d.value)
+    }
+
+    for (const key in lines) {
+      const now = Date.now()
+      const {xs, ys} = lines[key]
+      const newX: number[] = []
+      const newY: number[] = []
+
+      let lastBreakpointIndex = 0
+
+      for (const {omega, timeThreshold} of BREAKPOINTS_DEFS) {
+        const index = xs.findIndex((x) => x > now - timeThreshold)
+        if (index === -1 || lastBreakpointIndex >= index) continue
+
+        const [xsbp, ysbp] = simplify(
+          xs.slice(lastBreakpointIndex, index),
+          ys.slice(lastBreakpointIndex, index),
+          omega
+        )
+
+        pushBigArray(newX, xsbp)
+        pushBigArray(newY, ysbp)
+
+        lastBreakpointIndex = index
+      }
+
+      if (lastBreakpointIndex < xs.length) {
+        pushBigArray(newX, xs.slice(lastBreakpointIndex, xs.length))
+        pushBigArray(newY, ys.slice(lastBreakpointIndex, ys.length))
+      }
+
+      lines[key] = {xs: newX, ys: newY}
+    }
+
+    const newArr: DiagramEntryPoint[] = []
+
+    for (const key in lines) {
+      const {xs, ys} = lines[key]
+      for (let i = 0; i < xs.length; i++) {
+        const time = xs[i]
+        const value = ys[i]
+
+        newArr.push({key, time, value})
+      }
+    }
+
+    plotRef.current?.changeData(newArr)
   })
 
   const update = (

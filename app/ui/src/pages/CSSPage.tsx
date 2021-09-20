@@ -1,5 +1,5 @@
 import {Switch} from 'antd'
-import {Line, GaugeOptions, LineOptions, Gauge} from '@antv/g2plot'
+import {GaugeOptions, LineOptions, Gauge, Area} from '@antv/g2plot'
 import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent from './PageContent'
 import {useCallback} from 'react'
@@ -133,10 +133,10 @@ const fetchDeviceConfig = async (deviceId: string): Promise<DeviceConfig> => {
   return deviceConfig
 }
 
-const fetchDeviceMeasurements = async (
+const fetchCssDeviceMeasurements = async (
   config: DeviceConfig,
   fields: string[],
-  timeStart = '-1d'
+  timeStart = '-1h'
 ): Promise<GiraffeTable> => {
   const {
     // influx_url: url, // use '/influx' proxy to avoid problem with InfluxDB v2 Beta (Docker)
@@ -161,20 +161,19 @@ const fetchDeviceMeasurements = async (
   return result
 }
 
-const fetchInfluxData = async (
+const fetchVirtualDeviceInfluxData = async (
   fields: string[]
 ): Promise<DeviceData | undefined> => {
   try {
     const config = await fetchDeviceConfig(VIRTUAL_DEVICE)
     return {
       config,
-      measurementsTable: await fetchDeviceMeasurements(
+      measurementsTable: await fetchCssDeviceMeasurements(
         config,
         fields /*, timeStart*/
       ),
     }
   } catch (e) {
-    // todo: escalation
     console.error(e)
   }
 }
@@ -187,26 +186,29 @@ const useHybridSource = (
 ) => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
 
-  const realtimeCallback = useCallback((pts: Point[]) => {
-    const newData: DiagramEntryPoint[] = []
+  const realtimeCallback = useCallback(
+    (pts: Point[]) => {
+      const newData: DiagramEntryPoint[] = []
 
-    for (const p of pts) {
-      const pointFields = p.fields
-      const time = Math.floor(+p.timestamp / 10 ** 6)
+      for (const p of pts) {
+        const pointFields = p.fields
+        const time = Math.floor(+p.timestamp / 10 ** 6)
 
-      for (const key in pointFields) {
-        const value = pointFields[key] as number
+        for (const key in pointFields) {
+          const value = pointFields[key] as number
 
-        for (const keep of fields) {
-          if (keep !== key) continue
-          newData.push({key, time, value})
-          break
+          for (const keep of fields) {
+            if (keep !== key) continue
+            newData.push({key, time, value})
+            break
+          }
         }
       }
-    }
 
-    dataCallback(newData)
-  }, [])
+      dataCallback(newData)
+    },
+    [fields]
+  )
 
   useRealtimeData(subscriptions, realtimeCallback)
 
@@ -225,7 +227,8 @@ const useHybridSource = (
   useEffect(() => {
     ;(async () => {
       if (!realtime) {
-        const data = (await fetchInfluxData(fields))?.measurementsTable
+        const data = (await fetchVirtualDeviceInfluxData(fields))
+          ?.measurementsTable
         if (!data) return
         const length = data.length
         const fieldCol = data.getColumn('_field', 'string')
@@ -261,15 +264,21 @@ const Cell: React.FC<{
     | Omit<GaugeOptions, 'data' | 'percent'>
     | undefined
   plotType: 'gauge' | 'line' | 'text'
-  field: string
+  field: string | string[]
   isRealtime: boolean
 }> = ({field, isRealtime, plotSettings, plotType, title, extra}) => {
-  const plot = useG2Plot(plotType === 'line' ? Line : Gauge, plotSettings)
-  const [fieldArr, setFieldArr] = useState([field])
+  const plot = useG2Plot(plotType === 'line' ? Area : Gauge, plotSettings)
+  const [fieldArr, setFieldArr] = useState<string[]>([])
   const [text, setText] = useState('')
 
   useEffect(() => {
-    setFieldArr([field])
+    const arr = Array.isArray(field) ? field : [field]
+    if (
+      arr.length !== fieldArr.length ||
+      arr.some((x, i) => x !== fieldArr[i])
+    ) {
+      setFieldArr(arr)
+    }
   }, [field])
 
   const lastEntryRef = useRef(0)
@@ -325,6 +334,7 @@ const Cell: React.FC<{
               top: '50%',
               transform: 'translateY(-50%)',
               width: 'calc(100% - 32px)',
+              color: '#0daed9',
             }}
           >
             {text}
@@ -343,16 +353,40 @@ const optsLines1: Omit<LineOptions, 'data' | 'percent'> = {
   legend: false,
 }
 
+const optsLineEngineSpeed: Omit<LineOptions, 'data' | 'percent'> = {
+  ...optsLines1,
+  color: '#2EB2E4',
+}
+
+const optsLineEngineFuelRate: Omit<LineOptions, 'data' | 'percent'> = {
+  ...optsLines1,
+  color: '#32B252',
+}
+
+const optsLineVehicleSpeed: Omit<LineOptions, 'data' | 'percent'> = {
+  ...optsLines1,
+  color: '#FACE54',
+}
+
+const optsLineBreakPressure: Omit<LineOptions, 'data' | 'percent'> = {
+  ...optsLines1,
+  color: '#BE2EE3',
+}
+
 const optsLine2: Omit<LineOptions, 'data' | 'percent'> = {
   height: 420,
   width: 500,
   legend: false,
+  color: ['#D1A244', '#0AB7AD'],
+  isStack: false,
 }
 
 const optsLine3: Omit<LineOptions, 'data' | 'percent'> = {
   height: 230,
   width: 500,
   legend: false,
+  color: ['#32C0F8', '#9D06A0'],
+  isStack: false,
 }
 
 const optsGauges: Omit<GaugeOptions, 'data' | 'percent'> = {
@@ -381,7 +415,7 @@ const RealTimePage: FunctionComponent = () => {
     <PageContent
       title="Realtime Demo"
       titleExtra={
-        <Switch checked={isRealtime} onChange={(v) => setIsRealtime(v)} />
+        <Switch checked={isRealtime} onChange={(v) => setIsRealtime(v)} checkedChildren={"Realtime"} unCheckedChildren={"Historical"} />
       }
     >
       <GridFixed cols={12} rowHeight={85} isResizable={true}>
@@ -391,7 +425,7 @@ const RealTimePage: FunctionComponent = () => {
             field={'EngineSpeed'}
             isRealtime={isRealtime}
             plotType={'line'}
-            plotSettings={optsLines1}
+            plotSettings={optsLineEngineSpeed}
           />
         </div>
         <div key="cell02" data-grid={{x: 0, y: 2, w: 3, h: 2}}>
@@ -400,7 +434,7 @@ const RealTimePage: FunctionComponent = () => {
             field={'EngineFuelRate'}
             isRealtime={isRealtime}
             plotType={'line'}
-            plotSettings={optsLines1}
+            plotSettings={optsLineEngineFuelRate}
           ></Cell>
         </div>
         <div key="cell03" data-grid={{x: 0, y: 4, w: 3, h: 2}}>
@@ -409,7 +443,7 @@ const RealTimePage: FunctionComponent = () => {
             field={'WheelBasedVehicleSpeed'}
             isRealtime={isRealtime}
             plotType={'line'}
-            plotSettings={optsLines1}
+            plotSettings={optsLineVehicleSpeed}
           />
         </div>
         <div key="cell04" data-grid={{x: 0, y: 6, w: 3, h: 2}}>
@@ -418,7 +452,7 @@ const RealTimePage: FunctionComponent = () => {
             field={'BrakePrimaryPressure'}
             isRealtime={isRealtime}
             plotType={'line'}
-            plotSettings={optsLines1}
+            plotSettings={optsLineBreakPressure}
           />
         </div>
 
@@ -453,7 +487,7 @@ const RealTimePage: FunctionComponent = () => {
         <div key="cell20" data-grid={{x: 5, y: 0, w: 7, h: 5}}>
           <Cell
             title={'Intake Air Pressure vs Oil Pressure'}
-            field={'EngineIntakeAirPressure' /* EngineOilPressure1 */}
+            field={['EngineIntakeAirPressure', 'EngineOilPressure1']}
             isRealtime={isRealtime}
             plotType={'line'}
             plotSettings={optsLine2}
@@ -462,7 +496,7 @@ const RealTimePage: FunctionComponent = () => {
         <div key="cell21" data-grid={{x: 5, y: 5, w: 7, h: 3}}>
           <Cell
             title={'Coolant and engine temperature'}
-            field={'EngineCoolantTemperature' /* EngineExhaustTemperature */}
+            field={['EngineCoolantTemperature', 'EngineExhaustTemperature']}
             isRealtime={isRealtime}
             plotType={'line'}
             plotSettings={optsLine3}
