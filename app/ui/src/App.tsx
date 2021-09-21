@@ -166,6 +166,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             )}
           />
           <Route exact path="/realtime" component={RealTimePage} />
+          <Route exact path="/realtime/:deviceId" component={RealTimePage} />
           <Route
             exact
             path="/realtime-settings"
