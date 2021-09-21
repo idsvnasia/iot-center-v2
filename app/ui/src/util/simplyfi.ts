@@ -158,7 +158,11 @@ const simplifyDouglasPeucker = (
   return [xsResult, ysResult] as const
 }
 
-export const simplifyForNormalizedData = (xs: number[], ys: number[], epsilon: number) => {
+export const simplifyForNormalizedData = (
+  xs: number[],
+  ys: number[],
+  epsilon: number
+) => {
   const [_xs, _ys] = simplifyDist(xs, ys, epsilon)
   const [__xs, __ys] = simplifyDouglasPeucker(_xs, _ys, epsilon)
 
