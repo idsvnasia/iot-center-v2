@@ -1,6 +1,6 @@
-import {Card} from 'antd'
+import {Button, Card, Select, Tooltip} from 'antd'
 import {Line, Gauge, GaugeOptions} from '@antv/g2plot'
-import React, {FunctionComponent, useState} from 'react'
+import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent from './PageContent'
 import {useRef} from 'react'
 import {useCallback} from 'react'
@@ -11,6 +11,10 @@ import {
   useWebSocket,
 } from '../util/realtimeUtils'
 import GridFixed from '../util/GridFixed'
+import {VIRTUAL_DEVICE} from '../App'
+import {RouteComponentProps} from 'react-router-dom'
+import {DeviceInfo} from './DevicesPage'
+import {IconSettings} from '../styles/icons'
 
 // todo: setable on page
 const retentionTime = 10000
@@ -122,14 +126,84 @@ const gaugesPlotOptions: Record<
   )
 )
 
-const RealTimePage: FunctionComponent = () => {
-  const [subscriptions /*, setSubscriptions */] = useState<Subscription[]>([
-    {measurement: 'environment', tags: ['clientId=virtual_device']},
-  ])
+interface PropsRoute {
+  deviceId?: string
+}
+
+const RealTimePage: FunctionComponent<RouteComponentProps<PropsRoute>> = ({
+  match,
+  history,
+}) => {
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const gaugeUpdatesRef = useRef<Record<string, (newData: number) => void>>({})
   const gaugeLastDataTimesRef = useRef<Record<string, number>>(
     Object.fromEntries(Object.keys(gaugesOptions).map((x) => [x, -1]))
   )
+
+  //#region device selection
+
+  const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
+  const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
+
+  useEffect(() => {
+    setSubscriptions([
+      {measurement: 'environment', tags: [`clientId=${deviceId}`]},
+    ])
+  }, [deviceId])
+
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const response = await fetch('/api/devices')
+        if (response.status >= 300) {
+          const text = await response.text()
+          throw new Error(`${response.status} ${text}`)
+        }
+        const data = await response.json()
+        setDevices(data)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    fetchDevices()
+  }, [])
+
+  const pageControls = (
+    <>
+      <Tooltip title="Choose device" placement="left">
+        <Select
+          showSearch
+          value={deviceId}
+          placeholder={'select device to show'}
+          showArrow={true}
+          filterOption={true}
+          onChange={(key) => history.push(`/realtime/${key}`)}
+          style={{minWidth: 200, width: 350, marginRight: 10}}
+          loading={!devices}
+          disabled={!devices}
+        >
+          {devices &&
+            devices.map(({deviceId}) => (
+              <Select.Option key={deviceId} value={deviceId}>
+                {deviceId}
+              </Select.Option>
+            ))}
+        </Select>
+      </Tooltip>
+
+      <Tooltip title="Go to device settings" placement="topRight">
+        <Button
+          type="primary"
+          icon={<IconSettings />}
+          style={{marginLeft: 10}}
+          href={`/devices/${deviceId}`}
+        ></Button>
+      </Tooltip>
+    </>
+  )
+
+  //#endregion device selection
 
   const [lineOptions /*, setLineOptions */] = useState({
     height: 300,
@@ -188,6 +262,9 @@ const RealTimePage: FunctionComponent = () => {
         <>
           This demo shows how to receive runtime points that are published using{' '}
           <code>app/server: yarn mqtt_publisher</code>
+          <div style={{display: 'inline-block', paddingLeft: 6}}>
+            {pageControls}
+          </div>
         </>
       }
     >
