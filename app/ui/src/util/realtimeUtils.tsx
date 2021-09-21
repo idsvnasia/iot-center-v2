@@ -1,5 +1,5 @@
 import {Gauge, Plot} from '@antv/g2plot'
-import React, {useCallback, useEffect, useRef} from 'react'
+import React, {useCallback, useEffect, useRef, useState} from 'react'
 import {simplifyForNormalizedData} from './simplyfi'
 
 const BREAKPOINTS_DEFS: {
@@ -12,8 +12,8 @@ const BREAKPOINTS_DEFS: {
 ]
 BREAKPOINTS_DEFS.sort((a, b) => -(a.timeThreshold - b.timeThreshold))
 
-type MinAndMax = {min: number; max: number}
-const getMinAndMax = (arr: number[]): MinAndMax => {
+export type MinAndMax = {min: number; max: number}
+export const getMinAndMax = (arr: number[]): MinAndMax => {
   let min = Infinity
   let max = -Infinity
   for (const i of arr) {
@@ -23,11 +23,7 @@ const getMinAndMax = (arr: number[]): MinAndMax => {
   return {min, max}
 }
 
-const normalize = (
-  arr: number[],
-  minAndMax: MinAndMax,
-  inverse: boolean = false
-) => {
+const normalize = (arr: number[], minAndMax: MinAndMax, inverse = false) => {
   const {max, min} = minAndMax
   const dist = max - min
   if (!inverse) {
@@ -127,6 +123,25 @@ const g2PlotDefaults = {
   },
 }
 
+export const useLastDiagramEntryPointGetter = () => {
+  const lastPointRef = useRef<DiagramEntryPoint>()
+
+  const getLastPoint = (points: DiagramEntryPoint[]) => {
+    if (!points.length) return
+    if (!lastPointRef.current) lastPointRef.current = points[0]
+
+    for (const p of points) {
+      if (lastPointRef.current.time < p.time) {
+        lastPointRef.current = p
+      }
+    }
+
+    return lastPointRef.current
+  }
+
+  return getLastPoint
+}
+
 export const useG2Plot = <
   PlotConstructor extends new (...args: any[]) => Plot<any>
 >(
@@ -140,6 +155,8 @@ export const useG2Plot = <
 
   const elementRef = useRef<HTMLDivElement>(undefined!)
   const element = <div ref={elementRef} />
+
+  const getLastPoint = useLastDiagramEntryPointGetter()
 
   useEffect(() => {
     if (!elementRef.current) return
@@ -175,25 +192,15 @@ export const useG2Plot = <
       return
     }
     if ((ctor as any) === Gauge) {
-      if (!data.length) return
-      let dataLast: DiagramEntryPoint = data[0]
-      data.forEach((x) => {
-        if (x.time > dataLast.time) {
-          dataLast = x
-        }
-      })
-      console.log(`aplying last data ${dataLast.value}`)
-      plotRef.current?.changeData?.(dataLast.value)
-
+      const dataLast = getLastPoint(data)
+      if (dataLast) plotRef.current?.changeData?.(dataLast.value)
       return
     }
     const lines: Record<string, {xs: number[]; ys: number[]}> = {}
 
     for (const d of data) {
       let obj = lines[d.key]
-      if (!obj) {
-        obj = lines[d.key] = {xs: [], ys: []}
-      }
+      if (!obj) obj = lines[d.key] = {xs: [], ys: []}
       obj.xs.push(d.time)
       obj.ys.push(d.value)
     }
@@ -296,7 +303,7 @@ export const G2Plot = <
 }
 
 /**
- * using spread operator with [Array].push
+ * using spred operator (Array.push(...items))
  * function can exceed callback for big arrays.
  * Use this method instead
  */
