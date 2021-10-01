@@ -92,7 +92,7 @@ const RealTimeSettingsPage: FunctionComponent = () => {
                     }}
                   />
                 </Form.Item>
-                <Form.Item label="Send interval">
+                <Form.Item label="Send interval [ms]">
                   <Input
                     value={settings?.sendInterval}
                     defaultValue={100}

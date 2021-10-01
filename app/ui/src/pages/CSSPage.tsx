@@ -17,6 +17,7 @@ import {
 } from '@influxdata/influxdb-client'
 import {
   DiagramEntryPoint,
+  G2PlotOptionsNoData,
   MinAndMax,
   pushBigArray,
   useG2Plot,
@@ -27,8 +28,6 @@ import PageContent from './PageContent'
 import GridFixed from '../util/GridFixed'
 import {queryTable} from '../util/queryTable'
 import {VIRTUAL_DEVICE} from '../App'
-
-type G2PlotOptionsNoData<T> = Omit<T, 'data' | 'percent'>
 
 const host =
   process.env.NODE_ENV === `development`
@@ -261,11 +260,19 @@ const Cell: React.FC<{
   title,
   extra,
 }) => {
-  const plot = useG2Plot(plotType === 'line' ? Area : Gauge, plotSettings)
+  const plot = useG2Plot(
+    plotType === 'line' ? Area : Gauge,
+    plotSettings,
+    isRealtime ? 10_000 : Infinity
+  )
   const fields = useArray(_fields)
   const [text, setText] = useState('')
 
   const getLastPoint = useLastDiagramEntryPointGetter()
+
+  useEffect(() => {
+    plot.update(undefined)
+  }, [isRealtime])
 
   useHybridSource(fields, isRealtime, 0, (_entries) => {
     const {min, max} = dataMapping ? dataMapping : {min: 0, max: 1}
@@ -278,7 +285,7 @@ const Cell: React.FC<{
       const lastEntry = getLastPoint(entries)
       if (!lastEntry) return
       setText(hoursToTimeString(lastEntry.value))
-    } else plot.update((d) => pushBigArray(d, entries))
+    } else plot.update(entries)
   })
 
   useEffect(() => {

@@ -2,16 +2,6 @@ import {Gauge, Plot} from '@antv/g2plot'
 import React, {useCallback, useEffect, useRef, useState} from 'react'
 import {simplifyForNormalizedData} from './simplyfi'
 
-const BREAKPOINTS_DEFS: {
-  timeThreshold: number
-  omega: number
-}[] = [
-  {timeThreshold: 10 * 1000, omega: 0.01},
-  {timeThreshold: 20 * 1000, omega: 0.02},
-  {timeThreshold: 60 * 1000, omega: 0.03},
-]
-BREAKPOINTS_DEFS.sort((a, b) => -(a.timeThreshold - b.timeThreshold))
-
 export type MinAndMax = {min: number; max: number}
 export const getMinAndMax = (arr: number[]): MinAndMax => {
   let min = Infinity
@@ -120,14 +110,19 @@ const g2PlotDefaults = {
   xAxis: {
     type: 'time',
     mask: 'HH:MM:ss',
+    nice: false,
+    tickInterval: 4,
   },
 }
 
-export const useLastDiagramEntryPointGetter = () => {
+export const useLastDiagramEntryPointGetter = (): {
+  (points: DiagramEntryPoint[]): DiagramEntryPoint | undefined
+  reset: () => void
+} => {
   const lastPointRef = useRef<DiagramEntryPoint>()
 
   const getLastPoint = (points: DiagramEntryPoint[]) => {
-    if (!points.length) return
+    if (!points.length) return lastPointRef.current
     if (!lastPointRef.current) lastPointRef.current = points[0]
 
     for (const p of points) {
@@ -139,24 +134,62 @@ export const useLastDiagramEntryPointGetter = () => {
     return lastPointRef.current
   }
 
+  getLastPoint.reset = () => {
+    lastPointRef.current = undefined
+  }
+
   return getLastPoint
 }
 
-export const useG2Plot = <
-  PlotConstructor extends new (...args: any[]) => Plot<any>
->(
+const asArray = <T,>(value: T[] | T): T[] =>
+  Array.isArray(value) ? value : [value]
+
+const applyRetention = (arr: DiagramEntryPoint[], retentionTimeMs: number) => {
+  if (retentionTimeMs === Infinity || retentionTimeMs === 0) return
+  if (retentionTimeMs < 0)
+    throw new Error(`retention time has to be bigger than zero`)
+
+  const now = Date.now()
+  const cutTime = now - retentionTimeMs
+
+  for (let i = arr.length; i--; ) {
+    if (arr[i].time < cutTime) {
+      arr.splice(i, 1)
+    }
+  }
+}
+
+export type PlotConstructor = new (...args: any[]) => Plot<any>
+export type G2PlotOptionsNoData<T> = Omit<
+  ConstructorParameters<new (...args: any[]) => Plot<T>>[1],
+  'data' | 'percent'
+>
+export type G2PlotUpdater<PlotType> = (
+  newData:
+    | undefined
+    | DiagramEntryPoint
+    | DiagramEntryPoint[]
+    | (PlotType extends Gauge ? number : never)
+) => void
+
+export const useG2Plot = (
   ctor: PlotConstructor,
-  opts?: Omit<ConstructorParameters<PlotConstructor>[1], 'data' | 'percent'>
+  opts?: Omit<ConstructorParameters<PlotConstructor>[1], 'data' | 'percent'>,
+  retentionTimeMs = Infinity
 ) => {
   type PlotType = InstanceType<PlotConstructor>
 
   const plotRef = useRef<PlotType>()
-  const dataRef = useRef<DiagramEntryPoint[] | number>([])
+  const dataRef = useRef<DiagramEntryPoint[] | number | undefined>()
+  const getLastPoint = useLastDiagramEntryPointGetter()
 
   const elementRef = useRef<HTMLDivElement>(undefined!)
   const element = <div ref={elementRef} />
+  const retentionTimeRef = useRef(retentionTimeMs)
 
-  const getLastPoint = useLastDiagramEntryPointGetter()
+  useEffect(() => {
+    retentionTimeRef.current = retentionTimeMs
+  }, [retentionTimeMs])
 
   useEffect(() => {
     if (!elementRef.current) return
@@ -177,7 +210,8 @@ export const useG2Plot = <
     plotRef.current?.update?.({
       ...g2PlotDefaults,
       ...opts,
-      ...(typeof data === 'number' ? {percent: data} : {data}),
+      ...(typeof data === 'number' ? {percent: data} : {}),
+      ...(Array.isArray(data) ? {data} : {}),
     })
   }, [opts])
 
@@ -186,85 +220,26 @@ export const useG2Plot = <
   const invalidate = useRafOnce(() => {
     // todo: don't redraw when window not visible
     const data = dataRef.current
-    if (!data) return
-    if (typeof data === 'number') {
-      plotRef.current?.changeData?.(data)
-      return
-    }
-    if ((ctor as any) === Gauge) {
-      const dataLast = getLastPoint(data)
-      if (dataLast) plotRef.current?.changeData?.(dataLast.value)
-      return
-    }
-    const lines: Record<string, {xs: number[]; ys: number[]}> = {}
+    console.log(data)
 
-    for (const d of data) {
-      let obj = lines[d.key]
-      if (!obj) obj = lines[d.key] = {xs: [], ys: []}
-      obj.xs.push(d.time)
-      obj.ys.push(d.value)
-    }
-
-    for (const key in lines) {
-      const now = Date.now()
-      const {xs, ys} = lines[key]
-      const newX: number[] = []
-      const newY: number[] = []
-
-      let lastBreakpointIndex = 0
-
-      for (const {omega, timeThreshold} of BREAKPOINTS_DEFS) {
-        const index = xs.findIndex((x) => x > now - timeThreshold)
-        if (index === -1 || lastBreakpointIndex >= index) continue
-
-        const [xsbp, ysbp] = simplify(
-          xs.slice(lastBreakpointIndex, index),
-          ys.slice(lastBreakpointIndex, index),
-          omega
-        )
-
-        pushBigArray(newX, xsbp)
-        pushBigArray(newY, ysbp)
-
-        lastBreakpointIndex = index
-      }
-
-      if (lastBreakpointIndex < xs.length) {
-        pushBigArray(newX, xs.slice(lastBreakpointIndex, xs.length))
-        pushBigArray(newY, ys.slice(lastBreakpointIndex, ys.length))
-      }
-
-      lines[key] = {xs: newX, ys: newY}
-    }
-
-    const newArr: DiagramEntryPoint[] = []
-
-    for (const key in lines) {
-      const {xs, ys} = lines[key]
-      for (let i = 0; i < xs.length; i++) {
-        const time = xs[i]
-        const value = ys[i]
-
-        newArr.push({key, time, value})
-      }
-    }
-
-    plotRef.current?.changeData(newArr)
+    if (data === undefined) {
+      plotRef.current?.changeData?.([])
+    } else if (typeof data === 'number') plotRef.current?.changeData?.(data)
+    else plotRef.current?.changeData?.(data)
   })
 
-  const update = (
-    newData: PlotType extends Gauge
-      ? number
-      :
-          | ((data: DiagramEntryPoint[]) => void)
-          | DiagramEntryPoint[]
-          | DiagramEntryPoint
-  ) => {
-    if (typeof newData === 'function') {
-      newData(dataRef.current as any)
-    } else if (typeof newData === 'number') {
+  const update: G2PlotUpdater<PlotType> = (newData) => {
+    if (newData === undefined || typeof newData === 'number') {
+      getLastPoint.reset()
       dataRef.current = newData
-    } else dataRef.current = Array.isArray(newData) ? newData : [newData]
+    } else if (ctor === Gauge)
+      dataRef.current = getLastPoint(asArray(newData))?.value
+    else if (Array.isArray(dataRef.current))
+      pushBigArray(dataRef.current, asArray(newData))
+    else dataRef.current = asArray(newData)
+
+    if (Array.isArray(dataRef.current))
+      applyRetention(dataRef.current, retentionTimeRef.current)
 
     invalidate()
   }
@@ -274,27 +249,20 @@ export const useG2Plot = <
   return plotObjRef.current
 }
 
-type G2PlotParams<PlotConstructor extends new (...args: any[]) => Plot<any>> = {
+type G2PlotParams = {
   type: PlotConstructor
-  options?: Omit<ConstructorParameters<PlotConstructor>[1], 'data' | 'percent'>
-  onUpdaterChange: (
-    updater: (
-      newData: InstanceType<PlotConstructor> extends Gauge
-        ? number
-        :
-            | ((data: DiagramEntryPoint[]) => void)
-            | DiagramEntryPoint[]
-            | DiagramEntryPoint
-    ) => void
-  ) => void
+  simplify?: boolean
+  options?: G2PlotOptionsNoData<any>
+  onUpdaterChange: (updater: G2PlotUpdater<Plot<any>>) => void
+  retentionTimeMs?: number
 }
 
-export const G2Plot = <
-  PlotConstructor extends new (...args: any[]) => Plot<any>
->(
-  params: G2PlotParams<PlotConstructor>
-) => {
-  const {element, update} = useG2Plot(params.type, params.options)
+export const G2Plot = (params: G2PlotParams) => {
+  const {element, update} = useG2Plot(
+    params.type,
+    params.options,
+    params.retentionTimeMs
+  )
   useEffect(() => {
     params.onUpdaterChange(update)
   }, [update])
