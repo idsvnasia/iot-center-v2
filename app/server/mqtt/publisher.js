@@ -177,6 +177,7 @@ parentPort.on('message', async (data) => {
       meas.last = meas.generate(meas.last, meas.lastTime, now)
       meas.lastTime = now
       point.floatField(meas.measurement, meas.last)
+      point.tag('clientId', 'virtual_device')
       point.timestamp(now * 10 ** 6)
       const influxLineProtocolData = point.toLineProtocol()
 
