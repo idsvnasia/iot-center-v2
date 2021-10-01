@@ -300,7 +300,7 @@ const RealTimePage: FunctionComponent<RouteComponentProps<PropsRoute>> = ({
       >
         {timeOptionsRealtime.map((value) => (
           <Select.Option key={value} value={value}>
-            {`Now ${value.substr(1)}`}
+            {`Live ${value.substr(1)}`}
           </Select.Option>
         ))}
         {timeOptionsPast.map((value) => (
