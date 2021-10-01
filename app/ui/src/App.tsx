@@ -128,9 +128,6 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             <Menu.Item key="/realtime" icon={<BorderLeftOutlined />}>
               <NavLink to="/realtime">Realtime</NavLink>
             </Menu.Item>
-            <Menu.Item key="/css-electronics" icon={<BorderLeftOutlined />}>
-              <NavLink to="/css-electronics">css-electronics</NavLink>
-            </Menu.Item>
             <Menu.Item key="/realtime-settings" icon={<BorderLeftOutlined />}>
               <NavLink to="/realtime-settings">Realtime-settings</NavLink>
             </Menu.Item>
@@ -172,7 +169,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             path="/realtime-settings"
             component={RealTimeSettingsPage}
           />
-          <Route exact path="/css-electronics" component={CSSPagePage} />
+          <Route exact path="/css" component={CSSPagePage} />
           <Route path="*" component={NotFoundPage} />
         </Switch>
         {helpText ? (
