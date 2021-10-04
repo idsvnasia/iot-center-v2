@@ -180,13 +180,18 @@ const useHybridSource = (
   dataCallback: (data: DiagramEntryPoint[]) => void
 ) => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const dataCallbackRef = useRef(dataCallback)
+
+  useEffect(() => {
+    dataCallbackRef.current = dataCallback
+  }, [dataCallback])
 
   const realtimeCallback = useCallback(
     (pts: Point[]) => {
       const newData = pointsToDiagramEntryPoints(fields, pts)
-      dataCallback(newData)
+      dataCallbackRef.current(newData)
     },
-    [fields, dataCallback]
+    [fields]
   )
 
   useRealtimeData(subscriptions, realtimeCallback)

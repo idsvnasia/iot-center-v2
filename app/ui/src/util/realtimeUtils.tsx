@@ -185,7 +185,41 @@ export const useG2Plot = (
 
   const elementRef = useRef<HTMLDivElement>(undefined!)
   const element = <div ref={elementRef} />
+
   const retentionTimeRef = useRef(retentionTimeMs)
+  const retentionUsed = () =>
+    retentionTimeRef.current !== Infinity && retentionTimeRef.current > 0
+  const getLatestDataTime = () => {
+    const data = dataRef.current
+
+    if (data === undefined) return undefined
+    if (typeof data === 'number') return getLastPoint([])?.time
+    if (!data.length) return undefined
+    return getMinAndMax(data.map((x) => x.time)).max
+  }
+
+  const getPlotOptions = () => {
+    const data = dataRef.current
+    const now = Date.now()
+
+    return {
+      ...g2PlotDefaults,
+      ...opts,
+      xAxis: {
+        ...g2PlotDefaults?.xAxis,
+        ...(retentionUsed()
+          ? {
+              min: now - retentionTimeRef.current,
+              max: getLatestDataTime(),
+              tickMethod: 'wilkinson-extended',
+            }
+          : {min: undefined, max: undefined}),
+        ...opts?.xAxis,
+      },
+      ...(typeof data === 'number' ? {percent: data} : {}),
+      ...(Array.isArray(data) ? {data} : {}),
+    }
+  }
 
   useEffect(() => {
     retentionTimeRef.current = retentionTimeMs
@@ -193,34 +227,18 @@ export const useG2Plot = (
 
   useEffect(() => {
     if (!elementRef.current) return
-    plotRef.current = new ctor(elementRef.current, {
-      ...g2PlotDefaults,
-      ...opts,
-      xAxis: {
-        ...g2PlotDefaults?.xAxis,
-        ...opts?.xAxis,
-      },
-    }) as any
+    plotRef.current = new ctor(elementRef.current, getPlotOptions())
     plotRef.current!.render()
   }, [])
 
   const redraw = useRafOnce(() => {
-    const data = dataRef.current
-
-    plotRef.current?.update?.({
-      ...g2PlotDefaults,
-      ...opts,
-      ...(typeof data === 'number' ? {percent: data} : {}),
-      ...(Array.isArray(data) ? {data} : {}),
-    })
+    plotRef.current?.update?.(getPlotOptions())
   }, [opts])
-
   useEffect(redraw, [redraw])
 
   const invalidate = useRafOnce(() => {
     // todo: don't redraw when window not visible
     const data = dataRef.current
-    console.log(data)
 
     if (data === undefined) {
       plotRef.current?.changeData?.([])
@@ -241,7 +259,8 @@ export const useG2Plot = (
     if (Array.isArray(dataRef.current))
       applyRetention(dataRef.current, retentionTimeRef.current)
 
-    invalidate()
+    if (retentionUsed()) redraw()
+    else invalidate()
   }
 
   const plotObjRef = useRef({element, update} as const)
