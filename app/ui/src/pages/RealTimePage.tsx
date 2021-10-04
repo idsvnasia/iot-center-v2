@@ -37,6 +37,15 @@ const host =
     : window.location.host
 const wsAddress = `ws://${host}/mqtt`
 
+const milisTimeLength = Date.now().toString().length
+
+const pointTimeToMillis = (p: Point): Point => ({
+  ...p,
+  timestamp: p.timestamp
+    .substr(0, milisTimeLength)
+    .padEnd(milisTimeLength, '0'),
+})
+
 const useRealtimeData = (
   subscriptions: Subscription[],
   onReceivePoints: (pts: Point[]) => void
@@ -45,7 +54,9 @@ const useRealtimeData = (
     (ws) => {
       ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
       ws.onmessage = (response) =>
-        onReceivePoints(JSON.parse(response.data) as Point[])
+        onReceivePoints(
+          (JSON.parse(response.data) as Point[]).map(pointTimeToMillis)
+        )
     },
     [subscriptions, onReceivePoints]
   )
@@ -405,7 +416,7 @@ const RealTimePage: FunctionComponent<RouteComponentProps<PropsRoute>> = ({
 
       for (const p of points) {
         const fields = p.fields
-        const time = Math.floor(+p.timestamp / 10 ** 6)
+        const time = Math.floor(+p.timestamp)
 
         for (const key in fields) {
           const value = fields[key] as number
