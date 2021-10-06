@@ -55,6 +55,10 @@ const PAGE_HELP: Array<{
     file: '/help/DashboardPage.md',
     matcher: '/dashboard/:device',
   },
+  {
+    file: '/help/RealtimePage.md',
+    matcher: '/realtime/:device',
+  },
 ]
 
 const getPageHelp = (url: string) =>
@@ -161,8 +165,14 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
               <DashboardPage {...props} helpCollapsed={helpCollapsed} />
             )}
           />
-          <Route exact path="/realtime" component={RealTimePage} />
-          <Route exact path="/realtime/:deviceId" component={RealTimePage} />
+          <Redirect exact from="/realtime" to={`/realtime/${VIRTUAL_DEVICE}`} />
+          <Route
+            exact
+            path="/realtime/:deviceId"
+            render={(props) => (
+              <RealTimePage {...props} helpCollapsed={helpCollapsed} />
+            )}
+          />
           <Route
             exact
             path="/realtime-settings"

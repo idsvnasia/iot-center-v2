@@ -8,7 +8,6 @@ import {
   DiagramEntryPoint,
   G2Plot,
   G2PlotUpdater,
-  useG2Plot,
   useWebSocket,
 } from '../util/realtimeUtils'
 import GridFixed from '../util/GridFixed'
@@ -169,7 +168,12 @@ const linePlotOptions: Record<
   Object.entries(measurementsDefinitions).map(([measurement, {}]) => [
     measurement,
     {
-      height: 150,
+      height: 200,
+      legend: false,
+      lineStyle: {
+        color: colorPrimary,
+        lineWidth: 4,
+      },
     },
   ])
 )
@@ -355,7 +359,7 @@ const RealTimePage: FunctionComponent<
       updatersLineRef.current[measurement]?.(undefined)
     }
   }
-  useEffect(clearData, [deviceId, timeStart, dataStamp])
+  useEffect(clearData, [deviceId, isRealtime, dataStamp])
 
   // TODO: on deviceData change clear data and set newOne
 
@@ -470,7 +474,7 @@ const RealTimePage: FunctionComponent<
   // todo: implement
   const renderPlot = (column: string, line: Omit<LineOptions, 'data'>) => (
     <G2Plot
-      type={Area}
+      type={Line}
       onUpdaterChange={(updater) => (updatersLineRef.current[column] = updater)}
       options={line}
       retentionTimeMs={retentionTime}

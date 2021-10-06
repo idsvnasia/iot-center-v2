@@ -45,6 +45,33 @@ const simplify = (xs: number[], ys: number[], epsilon: number) => {
   return [xsSimplified, ysSimplified] as const
 }
 
+const simplifyDiagramEntryPoint = (
+  arr: DiagramEntryPoint[],
+  epsilon: number
+) => {
+  const lines: Record<string, {xs: number[]; ys: number[]}> = {}
+
+  for (let i = arr.length; i--; ) {
+    const {key, time, value} = arr[i]
+    if (!lines[key]) lines[key] = {xs: [], ys: []}
+    lines[key].xs.push(time)
+    lines[key].ys.push(value)
+  }
+
+  return Object.entries(lines).flatMap(([key, {xs, ys}]) => {
+    const [xss, yss] = simplify(xs, ys, epsilon)
+    const entryPoints: DiagramEntryPoint[] = new Array(xss.length)
+
+    for (let i = xss.length; i--; ) {
+      const time = xss[i]
+      const value = yss[i]
+      entryPoints[i] = {key, time, value}
+    }
+
+    return entryPoints
+  })
+}
+
 export type DiagramEntryPoint = {
   value: number
   time: number
@@ -197,6 +224,20 @@ export const useG2Plot = (
     if (!data.length) return undefined
     return getMinAndMax(data.map((x) => x.time)).max
   }
+  const getSimplifyedData = () => {
+    const data = dataRef.current as DiagramEntryPoint[]
+
+    if (data.length > 5_000) {
+      const newData = simplifyDiagramEntryPoint(data, 0.005)
+      console.log(
+        `data simplified from ${data.length
+          .toString()
+          .padStart(6)} to ${newData.length.toString().padStart(6)}`
+      )
+
+      return newData
+    } else return data
+  }
 
   const getPlotOptions = () => {
     const data = dataRef.current
@@ -204,6 +245,7 @@ export const useG2Plot = (
 
     return {
       ...g2PlotDefaults,
+      ...(retentionUsed() ? {padding: [22, 28]} : {}),
       ...opts,
       xAxis: {
         ...g2PlotDefaults?.xAxis,
@@ -211,13 +253,14 @@ export const useG2Plot = (
           ? {
               min: now - retentionTimeRef.current,
               max: getLatestDataTime(),
-              tickMethod: 'wilkinson-extended',
+              // tickMethod: 'wilkinson-extended',
+              tickMethod: 'time-cat',
             }
           : {min: undefined, max: undefined}),
         ...opts?.xAxis,
       },
       ...(typeof data === 'number' ? {percent: data} : {}),
-      ...(Array.isArray(data) ? {data} : {}),
+      ...(Array.isArray(data) ? {data: getSimplifyedData()} : {}),
     }
   }
 
@@ -243,7 +286,7 @@ export const useG2Plot = (
     if (data === undefined) {
       plotRef.current?.changeData?.([])
     } else if (typeof data === 'number') plotRef.current?.changeData?.(data)
-    else plotRef.current?.changeData?.(data)
+    else plotRef.current?.changeData?.(getSimplifyedData())
   })
 
   const update: G2PlotUpdater<PlotType> = (newData) => {
