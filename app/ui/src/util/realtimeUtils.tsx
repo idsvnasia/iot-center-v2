@@ -259,6 +259,7 @@ export const useG2Plot = (
     if (Array.isArray(dataRef.current))
       applyRetention(dataRef.current, retentionTimeRef.current)
 
+    // TODO: if data has length over full length of time, use invalidate instead (probably will be faster ?)
     if (retentionUsed()) redraw()
     else invalidate()
   }
@@ -270,7 +271,6 @@ export const useG2Plot = (
 
 type G2PlotParams = {
   type: PlotConstructor
-  simplify?: boolean
   options?: G2PlotOptionsNoData<any>
   onUpdaterChange: (updater: G2PlotUpdater<Plot<any>>) => void
   retentionTimeMs?: number

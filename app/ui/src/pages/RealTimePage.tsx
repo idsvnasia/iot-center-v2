@@ -1,5 +1,5 @@
 import {Button, Card, Select, Tooltip} from 'antd'
-import {Line, Gauge, GaugeOptions} from '@antv/g2plot'
+import {Line, Gauge, GaugeOptions, LineOptions, Area} from '@antv/g2plot'
 import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent, {Message} from './PageContent'
 import {useRef} from 'react'
@@ -19,6 +19,20 @@ import {IconRefresh, IconSettings} from '../styles/icons'
 import {Table as GiraffeTable} from '@influxdata/giraffe'
 import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
+import {Row, Col, Collapse, Empty, Divider} from 'antd'
+import {
+  Plot,
+  timeFormatter,
+  GAUGE_THEME_LIGHT,
+  GaugeLayerConfig,
+  LineLayerConfig,
+} from '@influxdata/giraffe'
+import {InfoCircleFilled} from '@ant-design/icons'
+import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
+import {getXDomainFromTable} from '../util/tableUtils'
+import {colorLink, colorPrimary, colorText} from '../styles/colors'
+
+// TODO: unify naming - column/field etc.
 
 interface DeviceConfig {
   influx_url: string
@@ -28,39 +42,9 @@ interface DeviceConfig {
   id: string
 }
 
-// todo: setable on page
-const retentionTime = 10000
-
-const host =
-  process.env.NODE_ENV === `development`
-    ? window.location.hostname + ':5000'
-    : window.location.host
-const wsAddress = `ws://${host}/mqtt`
-
-const milisTimeLength = Date.now().toString().length
-
-const pointTimeToMillis = (p: Point): Point => ({
-  ...p,
-  timestamp: p.timestamp
-    .substr(0, milisTimeLength)
-    .padEnd(milisTimeLength, '0'),
-})
-
-const useRealtimeData = (
-  subscriptions: Subscription[],
-  onReceivePoints: (pts: Point[]) => void
-) => {
-  const wsInit = useCallback<(ws: WebSocket) => void>(
-    (ws) => {
-      ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
-      ws.onmessage = (response) =>
-        onReceivePoints(
-          (JSON.parse(response.data) as Point[]).map(pointTimeToMillis)
-        )
-    },
-    [subscriptions, onReceivePoints]
-  )
-  useWebSocket(wsInit, wsAddress)
+interface DeviceData {
+  config: DeviceConfig
+  measurementsTable?: GiraffeTable
 }
 
 const fetchDeviceConfig = async (deviceId: string): Promise<DeviceConfig> => {
@@ -104,6 +88,137 @@ const fetchDeviceMeasurements = async (
   return result
 }
 
+// fetchDeviceDataFieldLast replaced by taking data from fetchDeviceMeasurements
+
+// we replaced giraffe with non-react library to handle faster rerendering
+
+type MeasurementDefinition = {
+  min: number
+  max: number
+  unit: string
+  decimalPlaces?: number
+}
+
+const measurementsDefinitions: Record<string, MeasurementDefinition> = {
+  Temperature: {
+    min: -10,
+    max: 50,
+    unit: '°C',
+  },
+  Humidity: {
+    min: 0,
+    max: 100,
+    unit: '%',
+  },
+  Pressure: {
+    min: 800,
+    max: 1100,
+    unit: ' hPa',
+    decimalPlaces: 0,
+  },
+  CO2: {
+    min: 300,
+    max: 3500,
+    unit: ' ppm',
+    decimalPlaces: 0,
+  },
+  TVOC: {
+    min: 200,
+    max: 2200,
+    unit: '',
+    decimalPlaces: 0,
+  },
+}
+const fields = Object.keys(measurementsDefinitions)
+
+// TODO: implement decimal places logic
+// todo: styling
+const gaugesPlotOptions: Record<
+  string,
+  Omit<GaugeOptions, 'percent'>
+> = Object.fromEntries(
+  Object.entries(measurementsDefinitions).map(
+    ([measurement, {max, min, unit}]) => [
+      measurement,
+      {
+        range: {
+          ticks: [0, 1],
+          color: [`l(0) 0:${colorPrimary} 1:${colorLink}`],
+        },
+        axis: {
+          label: {
+            formatter: (v) => +v * (max - min) + min,
+          },
+        },
+        statistic: {
+          content: {
+            formatter: (x) =>
+              x ? `${(+x.percent * (max - min) + min).toFixed(0)}${unit}` : '',
+          },
+        },
+        height: 150,
+      },
+    ]
+  )
+)
+
+const linePlotOptions: Record<
+  string,
+  Omit<LineOptions, 'data'>
+> = Object.fromEntries(
+  Object.entries(measurementsDefinitions).map(([measurement, {}]) => [
+    measurement,
+    {
+      height: 150,
+    },
+  ])
+)
+
+// #region Realtime
+
+type Point = {
+  measurement: string
+  tagPairs: string[]
+  fields: Record<string, number | boolean | string>
+  timestamp: string
+}
+type Subscription = {
+  measurement: string
+  tags: string[]
+}
+
+const host =
+  process.env.NODE_ENV === `development`
+    ? window.location.hostname + ':5000'
+    : window.location.host
+const wsAddress = `ws://${host}/mqtt`
+
+const milisTimeLength = Date.now().toString().length
+
+const pointTimeToMillis = (p: Point): Point => ({
+  ...p,
+  timestamp: p.timestamp
+    .substr(0, milisTimeLength)
+    .padEnd(milisTimeLength, '0'),
+})
+
+const useRealtimeData = (
+  subscriptions: Subscription[],
+  onReceivePoints: (pts: Point[]) => void
+) => {
+  const wsInit = useCallback<(ws: WebSocket) => void>(
+    (ws) => {
+      ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
+      ws.onmessage = (response) =>
+        onReceivePoints(
+          (JSON.parse(response.data) as Point[]).map(pointTimeToMillis)
+        )
+    },
+    [subscriptions, onReceivePoints]
+  )
+  useWebSocket(wsInit, wsAddress)
+}
+
 /** transformation for pivoted giraffe table */
 const giraffeTableToDiagramEntryPoints = (
   table: GiraffeTable | undefined,
@@ -132,109 +247,151 @@ const giraffeTableToDiagramEntryPoints = (
   return data
 }
 
-type Point = {
-  measurement: string
-  tagPairs: string[]
-  fields: Record<string, number | boolean | string>
-  timestamp: string
-}
-type Subscription = {
-  measurement: string
-  tags: string[]
-}
-
-type MeasurementGaugeOptions = {
-  min: number
-  max: number
-  ticks: number[]
-  color: string[]
-  unit: string
-}
-const gaugesOptions: Record<string, MeasurementGaugeOptions> = {
-  Temperature: {
-    min: -10,
-    max: 50,
-    ticks: [0, 0.2, 0.8, 1],
-    color: ['#655ae6', 'lightgreen', '#ff5c5c'],
-    unit: '°C',
-  },
-  Humidity: {
-    min: 0,
-    max: 100,
-    ticks: [0, 0.1, 0.9, 1],
-    color: ['#ff5c5c', 'lightgreen', '#ff5c5c'],
-    unit: '%',
-  },
-  Pressure: {
-    min: 800,
-    max: 1100,
-    ticks: [0, 0.25, 0.9, 1],
-    color: ['lightgreen', '#dbeb2a', 'red'],
-    unit: ' hPa',
-  },
-  CO2: {
-    min: 300,
-    max: 3500,
-    ticks: [0, 0.1, 0.9, 1],
-    color: ['#ff5c5c', 'lightgreen', '#ff5c5c'],
-    unit: ' ppm',
-  },
-  TVOC: {
-    min: 200,
-    max: 2200,
-    ticks: [0, 1 / 3, 2 / 3, 1],
-    color: ['#F4664A', '#FAAD14', '#30BF78'],
-    unit: '',
-  },
-}
-const gaugesPlotOptions: Record<
-  string,
-  Omit<GaugeOptions, 'percent'>
-> = Object.fromEntries(
-  Object.entries(gaugesOptions).map(
-    ([measurement, {ticks, color, max, min, unit}]) => [
-      measurement,
-      {
-        range: {
-          ticks,
-          color,
-        },
-        axis: {
-          label: {
-            formatter: (v) => +v * (max - min) + min,
-          },
-        },
-        statistic: {
-          content: {
-            formatter: (x) =>
-              x ? `${(+x.percent * (max - min) + min).toFixed(0)}${unit}` : '',
-          },
-        },
-        height: 300,
-      },
-    ]
-  )
-)
-const fields = Object.keys(gaugesOptions)
+// #endregion Realtime
 
 interface PropsRoute {
   deviceId?: string
 }
 
-const RealTimePage: FunctionComponent<RouteComponentProps<PropsRoute>> = ({
-  match,
-  history,
-}) => {
-  // realtime
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const gaugeUpdatesRef = useRef<Record<string, G2PlotUpdater<Gauge>>>({})
-  const [dataStamp, setDataStamp] = useState(0)
-  const [loading, setLoading] = useState(false)
+interface Props {
+  helpCollapsed: boolean
+}
 
-  //#region device selection
-
+const RealTimePage: FunctionComponent<
+  RouteComponentProps<PropsRoute> & Props
+> = ({match, history, helpCollapsed}) => {
   const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
+  // loading is defaultly false
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<Message | undefined>()
+  const [deviceData, setDeviceData] = useState<DeviceData | undefined>()
+  const [dataStamp, setDataStamp] = useState(0)
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
+  const [timeStart, setTimeStart] = useState('-10s')
+
+  const hasDataFieldsRef = useRef<Record<string, boolean>>({})
+  const isVirtualDevice = deviceId === VIRTUAL_DEVICE
+  const measurementsTable = deviceData?.measurementsTable
+
+  // #region realtime
+
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  type Updaters<T> = Record<string, G2PlotUpdater<T>>
+  const updatersGaugeRef = useRef<Updaters<Gauge>>({})
+  const updatersLineRef = useRef<Updaters<Line>>({})
+
+  const timeOptionsRealtime: {
+    label: string
+    value: string
+    realtimeRetention: number
+  }[] = [
+    {label: 'Live 10s', value: '-10s', realtimeRetention: 10_000},
+    {label: 'Live 30s', value: '-30s', realtimeRetention: 30_000},
+    {label: 'Live 1m', value: '-1m', realtimeRetention: 60_000},
+  ]
+
+  const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
+
+  const retentionTime = isRealtime
+    ? timeOptionsRealtime[
+        timeOptionsRealtime.findIndex((x) => x.value === timeStart)
+      ].realtimeRetention
+    : Infinity
+
+  useEffect(() => {
+    setSubscriptions(
+      isRealtime
+        ? [{measurement: 'environment', tags: [`clientId=${deviceId}`]}]
+        : []
+    )
+  }, [deviceId, isRealtime])
+
+  const updateData = (data: DiagramEntryPoint[] | undefined) => {
+    if (data === undefined) return
+
+    // register data received
+    const hasData = hasDataFieldsRef.current
+    fields
+      .filter((x) => !hasData[x])
+      .filter((x) => data.some((p) => x === p.key))
+      .forEach((x) => (hasData[x] = true))
+
+    for (const field of fields) {
+      const lineData = data.filter(({key}) => key === field)
+
+      const {min, max} = measurementsDefinitions[field]
+      const gaugeData = lineData.map((x) => ({
+        ...x,
+        value: (x.value - min) / (max - min),
+      }))
+
+      updatersLineRef.current[field]?.(lineData)
+      updatersGaugeRef.current[field]?.(gaugeData)
+    }
+  }
+
+  const updatePoints = (points: Point[]) => {
+    const newData: DiagramEntryPoint[] = []
+
+    for (const p of points) {
+      const fields = p.fields
+      const time = Math.floor(+p.timestamp)
+
+      for (const key in fields) {
+        const value = fields[key] as number
+        newData.push({key, time, value})
+      }
+    }
+
+    updateData(newData)
+  }
+
+  useRealtimeData(subscriptions, useRef(updatePoints).current)
+
+  const clearData = () => {
+    hasDataFieldsRef.current = {}
+    for (const measurement of fields) {
+      updatersGaugeRef.current[measurement]?.(0)
+      updatersLineRef.current[measurement]?.(undefined)
+    }
+  }
+  useEffect(clearData, [deviceId, timeStart, dataStamp])
+
+  // TODO: on deviceData change clear data and set newOne
+
+  useEffect(() => {
+    clearData()
+    updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fields))
+  }, [deviceData])
+
+  // #endregion realtime
+
+  // fetch device configuration and data
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const config = await fetchDeviceConfig(deviceId)
+        const deviceData: DeviceData = {config}
+        const [table] = await Promise.all([
+          fetchDeviceMeasurements(config, timeStart),
+        ])
+        deviceData.measurementsTable = table
+        setDeviceData(deviceData)
+      } catch (e) {
+        console.error(e)
+        setMessage({
+          title: 'Cannot load device data',
+          description: String(e),
+          type: 'error',
+        })
+      }
+      setLoading(false)
+    }
+
+    // fetch data only if not in realtime mode
+    if (!isRealtime) fetchData()
+  }, [dataStamp, deviceId, timeStart])
 
   useEffect(() => {
     const fetchDevices = async () => {
@@ -247,111 +404,184 @@ const RealTimePage: FunctionComponent<RouteComponentProps<PropsRoute>> = ({
         const data = await response.json()
         setDevices(data)
       } catch (e) {
-        console.error(e)
+        setMessage({
+          title: 'Cannot fetch data',
+          description: String(e),
+          type: 'error',
+        })
       }
     }
 
     fetchDevices()
   }, [])
 
-  const chooseDeviceElement = (
-    <Tooltip title="Choose device" placement="left">
-      <Select
-        showSearch
-        value={deviceId}
-        placeholder={'select device to show'}
-        showArrow={true}
-        filterOption={true}
-        onChange={(key) => history.push(`/realtime/${key}`)}
-        style={{minWidth: 200, width: 350, marginRight: 10}}
-        loading={!devices}
-        disabled={!devices}
-      >
-        {devices &&
-          devices.map(({deviceId}) => (
-            <Select.Option key={deviceId} value={deviceId}>
-              {deviceId}
-            </Select.Option>
-          ))}
-      </Select>
-    </Tooltip>
+  // todo: implement
+  const renderGauge = (
+    column: string,
+    gauge: Omit<GaugeOptions, 'percent'>
+  ) => (
+    <G2Plot
+      type={Gauge}
+      onUpdaterChange={(updater) =>
+        (updatersGaugeRef.current[column] = updater)
+      }
+      options={gauge}
+    />
   )
 
-  //#endregion device selection
+  // todo: implement
+  const gaugeLastTimeMessage = (time: number) => {
+    const now = Date.now()
+    const diff = now - time
 
-  //#region time selection
+    if (diff < 60_000) return 'just now'
+    if (diff < 300_000) return 'less than 5 min ago'
+    if (diff < 900_000) return 'more than 5 min ago'
+    return 'long time ago'
+  }
 
-  const timeOptionsRealtime = ['-10s', '-30s', '-1m']
-  // todo: better way
-  const timeOptionsRealtimeTime = [10_000, 30_000, 60_000]
+  // todo: implement
+  const gauges =
+    deviceData?.measurementsTable?.length || isRealtime ? (
+      <>
+        <Row gutter={[22, 22]}>
+          {Object.entries(gaugesPlotOptions).map(([column, gauge]) => {
+            return (
+              <Col
+                sm={helpCollapsed ? 24 : 24}
+                md={helpCollapsed ? 12 : 24}
+                xl={helpCollapsed ? 6 : 12}
+              >
+                <Card title={column}>{renderGauge(column, gauge)}</Card>
+              </Col>
+            )
+          })}
+        </Row>
+        <Divider style={{color: 'rgba(0, 0, 0, .2)'}} orientation="right">
+          {/* 
+          {gaugeMissingValues.length
+            ? `Gauge missing values: ${gaugeMissingValues.join(', ')}`
+            : undefined} 
+            */}
+        </Divider>
+      </>
+    ) : undefined
 
-  const timeOptionsPast = [
-    '-5m',
-    '-15m',
-    '-1h',
-    '-6h',
-    '-1d',
-    '-3d',
-    '-7d',
-    '-30d',
+  // todo: implement
+  const renderPlot = (column: string, line: Omit<LineOptions, 'data'>) => (
+    <G2Plot
+      type={Area}
+      onUpdaterChange={(updater) => (updatersLineRef.current[column] = updater)}
+      options={line}
+      retentionTimeMs={retentionTime}
+    />
+  )
+
+  // todo: implement
+  const plots =
+    (measurementsTable && measurementsTable?.length) || isRealtime
+      ? (() => {
+          return (
+            <>
+              <Row gutter={[0, 24]}>
+                {Object.entries(linePlotOptions).map(([column, line], i) => (
+                  <Col xs={24}>
+                    <Collapse defaultActiveKey={[i]}>
+                      <CollapsePanel key={i} header={column}>
+                        {renderPlot(column, line)}
+                      </CollapsePanel>
+                    </Collapse>
+                  </Col>
+                ))}
+              </Row>
+              {/* {measurementsNoValues.length ? (
+            <Collapse>
+              {measurementsNoValues.map(({title}, i) => (
+                <CollapsePanel
+                  key={i}
+                  disabled={true}
+                  header={`${title} - No data`}
+                />
+              ))}
+            </Collapse>
+          ) : undefined} */}
+            </>
+          )
+        })()
+      : undefined
+
+  const timeOptions: {label: string; value: string}[] = [
+    {label: 'Past 5m', value: '-5m'},
+    {label: 'Past 15m', value: '-15m'},
+    {label: 'Past 1h', value: '-1h'},
+    {label: 'Past 6h', value: '-6h'},
+    {label: 'Past 1d', value: '-1d'},
+    {label: 'Past 3d', value: '-3d'},
+    {label: 'Past 7d', value: '-7d'},
+    {label: 'Past 30d', value: '-30d'},
   ]
 
-  const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0])
+  const pageControls = (
+    <>
+      <Tooltip title="Choose device" placement="left">
+        <Select
+          showSearch
+          value={deviceId}
+          placeholder={'select device to show'}
+          showArrow={true}
+          filterOption={true}
+          // goes to realtime page (instead of dashboard)
+          onChange={(key) => history.push(`/realtime/${key}`)}
+          style={{minWidth: 200, width: 350, marginRight: 10}}
+          loading={!devices}
+          disabled={!devices}
+        >
+          {devices &&
+            devices.map(({deviceId}) => (
+              <Select.Option key={deviceId} value={deviceId}>
+                {deviceId}
+              </Select.Option>
+            ))}
+        </Select>
+      </Tooltip>
 
-  const isRealtime = timeOptionsRealtime.some((x) => x === timeStart)
+      <Tooltip title="Choose time" placement="left">
+        <Select
+          value={timeStart}
+          onChange={setTimeStart}
+          style={{minWidth: 100}}
+          loading={loading}
+          disabled={loading}
+        >
+          {[...timeOptionsRealtime, ...timeOptions].map(({label, value}) => (
+            <Select.Option key={value} value={value}>
+              {label}
+            </Select.Option>
+          ))}
+        </Select>
+      </Tooltip>
 
-  const chooseTimeElement = (
-    <Tooltip title="Choose time" placement="left">
-      <Select
-        value={timeStart}
-        onChange={setTimeStart}
-        style={{minWidth: 100}}
-        loading={loading}
-        disabled={loading}
-      >
-        {timeOptionsRealtime.map((value) => (
-          <Select.Option key={value} value={value}>
-            {`Live ${value.substr(1)}`}
-          </Select.Option>
-        ))}
-        {timeOptionsPast.map((value) => (
-          <Select.Option key={value} value={value}>
-            {`Past ${value.substr(1)}`}
-          </Select.Option>
-        ))}
-      </Select>
-    </Tooltip>
+      <Tooltip title="Reload Device Data">
+        <Button
+          // disable refresh when in realtime mode
+          disabled={loading || isRealtime}
+          loading={loading}
+          onClick={() => setDataStamp(dataStamp + 1)}
+          style={{marginLeft: 10}}
+          icon={<IconRefresh />}
+        />
+      </Tooltip>
+
+      <Tooltip title="Go to device settings" placement="topRight">
+        <Button
+          type="primary"
+          icon={<IconSettings />}
+          style={{marginLeft: 10}}
+          href={`/devices/${deviceId}`}
+        ></Button>
+      </Tooltip>
+    </>
   )
-
-  //#endregion time selection
-
-  useEffect(() => {
-    setSubscriptions(
-      isRealtime
-        ? [{measurement: 'environment', tags: [`clientId=${deviceId}`]}]
-        : []
-    )
-  }, [deviceId, isRealtime])
-
-  const clearData = () => {
-    plot.update(undefined)
-    for (const measurement of fields) {
-      gaugeUpdatesRef.current[measurement]?.(0)
-    }
-  }
-  useEffect(clearData, [deviceId, isRealtime, dataStamp])
-
-  const updateData = (data: DiagramEntryPoint[]) => {
-    plot.update(data)
-
-    for (const measurement of fields) {
-      const {min, max} = gaugesOptions[measurement]
-      const gaugeData = data
-        .filter(({key}) => key === measurement)
-        .map((x) => ({...x, value: (x.value - min) / (max - min)}))
-      gaugeUpdatesRef.current[measurement]?.(gaugeData)
-    }
-  }
 
   // fetch device configuration and data
   useEffect(() => {
@@ -372,95 +602,33 @@ const RealTimePage: FunctionComponent<RouteComponentProps<PropsRoute>> = ({
     if (!isRealtime) fetchData()
   }, [dataStamp, deviceId, timeStart])
 
-  const pageControls = (
-    <>
-      {chooseDeviceElement}
-      {chooseTimeElement}
-
-      <Tooltip title="Reload Device Data">
-        <Button
-          disabled={loading || isRealtime}
-          loading={loading}
-          onClick={() => setDataStamp(dataStamp + 1)}
-          style={{marginLeft: 10}}
-          icon={<IconRefresh />}
-        />
-      </Tooltip>
-
-      <Tooltip title="Go to device settings" placement="topRight">
-        <Button
-          type="primary"
-          icon={<IconSettings />}
-          style={{marginLeft: 10}}
-          href={`/devices/${deviceId}`}
-        ></Button>
-      </Tooltip>
-    </>
-  )
-
-  const [lineOptions /*, setLineOptions */] = useState({
-    height: 300,
-  })
-
-  const retentionTime = isRealtime
-    ? timeOptionsRealtimeTime[
-        timeOptionsRealtime.findIndex((x) => x === timeStart)
-      ]
-    : Infinity
-
-  const plot = useG2Plot(Line, lineOptions, retentionTime)
-
-  const updatePoints = useCallback(
-    (points: Point[]) => {
-      const newData: DiagramEntryPoint[] = []
-
-      for (const p of points) {
-        const fields = p.fields
-        const time = Math.floor(+p.timestamp)
-
-        for (const key in fields) {
-          const value = fields[key] as number
-          newData.push({key, time, value})
-        }
-      }
-
-      updateData(newData)
-    },
-    [plot, updateData]
-  )
-
-  useRealtimeData(subscriptions, updatePoints)
-
   return (
-    <PageContent title="Realtime Demo" titleExtra={pageControls}>
-      <GridFixed cols={5} rowHeight={400} isResizable={true}>
-        {Object.entries(gaugesPlotOptions).map(
-          ([measurement, options], index) => (
-            <Card
-              key={index}
-              data-grid={{x: index, y: 0, w: 1, h: 1}}
-              style={{height: '100%'}}
-              title={measurement}
-            >
-              <G2Plot
-                type={Gauge}
-                onUpdaterChange={(updater) =>
-                  (gaugeUpdatesRef.current[measurement] = updater)
-                }
-                options={options}
-              />
-            </Card>
-          )
-        )}
-        <Card
-          key="lines"
-          data-grid={{x: 0, y: 0, w: 5, h: 1}}
-          style={{height: '100%'}}
-          title={'All measurements line'}
-        >
-          {plot.element}
+    <PageContent
+      title={
+        <>
+          Realtime Dashboard
+          {isVirtualDevice ? (
+            <Tooltip title="This page writes temperature measurements for the last 7 days from an emulated device, the temperature is reported every minute.">
+              <InfoCircleFilled style={{fontSize: '1em', marginLeft: 5}} />
+            </Tooltip>
+          ) : undefined}
+        </>
+      }
+      titleExtra={pageControls}
+      message={message}
+      spin={loading}
+      forceShowScroll={true}
+    >
+      {deviceData?.measurementsTable?.length || isRealtime ? (
+        <>
+          {gauges}
+          {plots}
+        </>
+      ) : (
+        <Card>
+          <Empty />
         </Card>
-      </GridFixed>
+      )}
     </PageContent>
   )
 }

@@ -27,10 +27,7 @@ import {
 } from './styles/icons'
 import RealTimePage from './pages/RealTimePage'
 import RealTimeSettingsPage from './pages/RealTimeSettingsPage'
-import {
-  PlayCircleOutlined,
-  SettingOutlined,
-} from '@ant-design/icons'
+import {PlayCircleOutlined, SettingOutlined} from '@ant-design/icons'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
