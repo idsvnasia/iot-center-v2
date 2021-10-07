@@ -127,6 +127,10 @@ const useRafOnce = (callback: () => void, deps: any[] = []) => {
 
 const formatter = (v: string) => new Date(+v).toLocaleTimeString()
 
+export const maskTime = 'hh:mm:ss'
+export const maskDate = 'DD/MM/YY'
+export const maskDateTime = `${maskDate} ${maskTime} `
+
 const g2PlotDefaults = {
   data: [],
   percent: 0,
@@ -136,7 +140,7 @@ const g2PlotDefaults = {
   animation: false,
   xAxis: {
     type: 'time',
-    mask: 'HH:MM:ss',
+    mask: maskTime,
     nice: false,
     tickInterval: 4,
   },
@@ -206,8 +210,10 @@ export const useG2Plot = (
 ) => {
   type PlotType = InstanceType<PlotConstructor>
 
+  // todo: use one ref for everything
   const plotRef = useRef<PlotType>()
   const dataRef = useRef<DiagramEntryPoint[] | number | undefined>()
+  const maskRef = useRef(maskTime)
   const getLastPoint = useLastDiagramEntryPointGetter()
 
   const elementRef = useRef<HTMLDivElement>(undefined!)
@@ -257,6 +263,7 @@ export const useG2Plot = (
               tickMethod: 'time-cat',
             }
           : {min: undefined, max: undefined}),
+        mask: maskRef.current,
         ...opts?.xAxis,
       },
       ...(typeof data === 'number' ? {percent: data} : {}),
@@ -289,6 +296,21 @@ export const useG2Plot = (
     else plotRef.current?.changeData?.(getSimplifyedData())
   })
 
+  const updateMask = () => {
+    if (!Array.isArray(dataRef.current)) return false
+
+    const dayMillis = 24 * 60 * 60 * 1000
+    const prevMask = maskRef.current
+
+    if (dataRef.current.some((x) => x.time < Date.now() - 3 * dayMillis))
+      maskRef.current = maskDateTime
+    else if (dataRef.current.some((x) => x.time < Date.now() - dayMillis))
+      maskRef.current = maskDate
+    else maskRef.current = maskTime
+
+    return prevMask !== maskRef.current
+  }
+
   const update: G2PlotUpdater<PlotType> = (newData) => {
     if (newData === undefined || typeof newData === 'number') {
       getLastPoint.reset()
@@ -302,8 +324,10 @@ export const useG2Plot = (
     if (Array.isArray(dataRef.current))
       applyRetention(dataRef.current, retentionTimeRef.current)
 
+    const maskChanged = updateMask()
+
     // TODO: if data has length over full length of time, use invalidate instead (probably will be faster ?)
-    if (retentionUsed()) redraw()
+    if (retentionUsed() || maskChanged) redraw()
     else invalidate()
   }
 
