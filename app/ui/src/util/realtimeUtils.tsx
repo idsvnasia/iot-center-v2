@@ -72,6 +72,43 @@ const simplifyDiagramEntryPoint = (
   })
 }
 
+const simplifyDiagramEntryPointToMaxPoints = (
+  arr: DiagramEntryPoint[],
+  points: number = 5_000
+) => {
+  if (arr.length < points) return arr
+
+  const s = simplifyDiagramEntryPoint;
+
+  let low = {arr, epsiolon: 0}
+  let high = {arr: s(arr, 1), epsiolon: 1}
+
+  for (let i = 15;i--;){
+    const halfDist = (high.epsiolon - low.epsiolon) / 2;
+    const center = halfDist + low.epsiolon; 
+
+    const newArr = s(arr, center);
+
+    // console.log(`${low.arr.length.toString().padStart(8)} ${newArr.length.toString().padStart(8)} ${high.arr.length.toString().padStart(8)}`)
+    // console.log(`${low.epsiolon.toFixed(6).padStart(8)} ${center.toFixed(6).padStart(8)} ${high.epsiolon.toFixed(6).padStart(8)}`)
+
+    if (Math.floor(newArr.length/10) === Math.floor(points/10))
+      return newArr;
+
+    // epsilon is low significant that it's no longer differs array size
+    if (low.arr.length === newArr.length)
+      return newArr
+
+    if (newArr.length < points) {
+      high = {arr: newArr, epsiolon: center}
+    } else {
+      low = {arr: newArr, epsiolon: center}
+    }
+  }
+
+  return low.arr;
+}
+
 export type DiagramEntryPoint = {
   value: number
   time: number
@@ -234,7 +271,7 @@ export const useG2Plot = (
     const data = dataRef.current as DiagramEntryPoint[]
 
     if (data.length > 5_000) {
-      const newData = simplifyDiagramEntryPoint(data, 0.005)
+      const newData = simplifyDiagramEntryPointToMaxPoints(data)
       console.log(
         `data simplified from ${data.length
           .toString()

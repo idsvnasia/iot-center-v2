@@ -242,11 +242,15 @@ const giraffeTableToDiagramEntryPoints = (
     const key = tags[j]
     const valueCol = table.getColumn(key, 'number')!
     for (let i = length; i--; ) {
-      const value = valueCol[i]
-      const time = timeCol[i]
+      const value = valueCol?.[i]
+      const time = timeCol?.[i]
       data[i + j * length] = {key, time, value}
     }
   }
+
+  for (let i = data.length; i--; )
+    if (typeof data[i].value !== 'number' || typeof data[i].time !== 'number')
+      data.splice(i, 1)
 
   return data
 }
