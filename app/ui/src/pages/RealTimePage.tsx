@@ -10,7 +10,6 @@ import {
   G2PlotUpdater,
   useWebSocket,
 } from '../util/realtimeUtils'
-import GridFixed from '../util/GridFixed'
 import {VIRTUAL_DEVICE} from '../App'
 import {RouteComponentProps} from 'react-router-dom'
 import {DeviceInfo} from './DevicesPage'
@@ -103,6 +102,7 @@ const measurementsDefinitions: Record<string, MeasurementDefinition> = {
     min: -10,
     max: 50,
     unit: '°C',
+    decimalPlaces: 1,
   },
   Humidity: {
     min: 0,
@@ -112,20 +112,17 @@ const measurementsDefinitions: Record<string, MeasurementDefinition> = {
   Pressure: {
     min: 800,
     max: 1100,
-    unit: ' hPa',
-    decimalPlaces: 0,
+    unit: 'hPa',
   },
   CO2: {
     min: 300,
     max: 3500,
-    unit: ' ppm',
-    decimalPlaces: 0,
+    unit: 'ppm',
   },
   TVOC: {
     min: 200,
     max: 2200,
     unit: '',
-    decimalPlaces: 0,
   },
 }
 const fields = Object.keys(measurementsDefinitions)
@@ -137,25 +134,63 @@ const gaugesPlotOptions: Record<
   Omit<GaugeOptions, 'percent'>
 > = Object.fromEntries(
   Object.entries(measurementsDefinitions).map(
-    ([measurement, {max, min, unit}]) => [
+    ([measurement, {max, min, unit, decimalPlaces}]) => [
       measurement,
       {
         range: {
           ticks: [0, 1],
-          color: [`l(0) 0:${colorPrimary} 1:${colorLink}`],
+          color: `l(0) 0:${colorPrimary} 1:${colorLink}`,
+          width: 15,
+        },
+        indicator: {
+          pointer: {
+            style: {stroke: 'gray'},
+          },
+          pin: {
+            style: {stroke: 'gray'},
+          },
         },
         axis: {
+          position: 'bottom',
           label: {
-            formatter: (v) => +v * (max - min) + min,
+            formatter: (v) =>
+              max < 1000
+                ? (+v * (max - min) + min).toFixed(0) + unit
+                : ((+v * (max - min) + min) / 1000).toFixed(0) + 'k' + unit,
+            offset: -30,
+            style: {
+              fontSize: 12,
+              fontWeight: 900,
+              fontFamily: 'Rubik',
+              fill: '#55575E',
+              shadowColor: 'white',
+            },
+          },
+          tickLine: {
+            // length: 10,
+            style: {
+              lineWidth: 3,
+            },
+          },
+          subTickLine: {
+            count: 9,
+            // length: 10,
+            style: {
+              lineWidth: 1,
+            },
           },
         },
         statistic: {
           content: {
             formatter: (x) =>
-              x ? `${(+x.percent * (max - min) + min).toFixed(0)}${unit}` : '',
+              x ? `${(+x.percent * (max - min) + min).toFixed(decimalPlaces ?? 0)}${unit}` : '',
+            style: {},
+            offsetY: 30,
           },
         },
         height: 150,
+        padding: [0,0,10,0],
+        // renderer: "svg"
       },
     ]
   )
@@ -210,6 +245,7 @@ const useRealtimeData = (
   subscriptions: Subscription[],
   onReceivePoints: (pts: Point[]) => void
 ) => {
+  // todo: disable when wsAddress not availeble
   const wsInit = useCallback<(ws: WebSocket) => void>(
     (ws) => {
       ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
@@ -220,7 +256,7 @@ const useRealtimeData = (
     },
     [subscriptions, onReceivePoints]
   )
-  useWebSocket(wsInit, wsAddress)
+  useWebSocket(wsInit, wsAddress, !!subscriptions.length)
 }
 
 /** transformation for pivoted giraffe table */

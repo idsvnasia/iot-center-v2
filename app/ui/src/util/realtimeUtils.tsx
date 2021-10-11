@@ -117,7 +117,8 @@ export type DiagramEntryPoint = {
 
 export const useWebSocket = (
   callback: (ws: WebSocket) => void,
-  url: string
+  url: string,
+  running = true
 ) => {
   const wsRef = useRef<WebSocket>()
 
@@ -128,9 +129,11 @@ export const useWebSocket = (
   }, [callback, url])
 
   useEffect(() => {
-    startListening()
-    return () => wsRef.current?.close?.()
-  }, [startListening])
+    if (running){
+      startListening()
+      return () => wsRef.current?.close?.()
+    }
+  }, [startListening, running])
 
   useEffect(() => {
     // reconnect a broken WS connection
