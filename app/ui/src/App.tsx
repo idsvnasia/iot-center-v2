@@ -77,9 +77,30 @@ const useHelpCollapsed = (): [boolean, (v: boolean) => void] => {
   return [helpCollapsed, changeHelpCollapsed]
 }
 
+const useMqttEnabled = () => {
+  const [mqttEnabled, setMqttEnabled] = useState<boolean | undefined>(undefined)
+
+  useEffect(() => {
+    const fetchMqttEnabled = async () => {
+      const response = await fetch('/mqtt/enabled')
+      if (response.status >= 300) {
+        const text = await response.text()
+        throw new Error(`${response.status} ${text}`)
+      }
+      const data = await response.json()
+      setMqttEnabled(data)
+    }
+
+    fetchMqttEnabled()
+  }, [])
+
+  return mqttEnabled
+}
+
 const App: FunctionComponent<RouteComponentProps> = (props) => {
   const [helpCollapsed, setHelpCollapsed] = useHelpCollapsed()
   const [helpText, setHelpText] = useState('')
+  const mqttEnabled = useMqttEnabled()
 
   const help = getPageHelp(props.location.pathname)
 
@@ -110,6 +131,9 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
               ...(matchPath(props.location.pathname, '/dashboard/:device')
                 ? ['/dashboard/:device']
                 : []),
+              ...(matchPath(props.location.pathname, '/realtime/:device')
+                ? ['/realtime/:device']
+                : []),
             ]}
             mode="inline"
           >
@@ -128,12 +152,23 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             <Menu.Item key="/dashboard/:device" icon={<IconDashboard />}>
               <NavLink to="/dashboard">Dashboard</NavLink>
             </Menu.Item>
-            <Menu.Item key="/realtime" icon={<PlayCircleOutlined />}>
-              <NavLink to="/realtime">Realtime</NavLink>
+            <Menu.Item
+              style={mqttEnabled === true ? {} : {color: 'gray'}}
+              key="/realtime/:device"
+              icon={<PlayCircleOutlined />}
+            >
+              <NavLink
+                style={mqttEnabled === true ? {} : {color: 'gray'}}
+                to="/realtime"
+              >
+                Realtime
+              </NavLink>
             </Menu.Item>
-            <Menu.Item key="/realtime-settings" icon={<SettingOutlined />}>
-              <NavLink to="/realtime-settings">Realtime-settings</NavLink>
-            </Menu.Item>
+            {mqttEnabled && (
+              <Menu.Item key="/realtime-settings" icon={<SettingOutlined />}>
+                <NavLink to="/realtime-settings">Realtime-settings</NavLink>
+              </Menu.Item>
+            )}
           </Menu>
         </Sider>
         <Switch>
@@ -170,7 +205,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             exact
             path="/realtime/:deviceId"
             render={(props) => (
-              <RealTimePage {...props} helpCollapsed={helpCollapsed} />
+              <RealTimePage {...props} {...{helpCollapsed, mqttEnabled}} />
             )}
           />
           <Route

@@ -74,30 +74,29 @@ const simplifyDiagramEntryPoint = (
 
 const simplifyDiagramEntryPointToMaxPoints = (
   arr: DiagramEntryPoint[],
-  points: number = 5_000
+  points = 5_000
 ) => {
   if (arr.length < points) return arr
 
-  const s = simplifyDiagramEntryPoint;
+  const s = simplifyDiagramEntryPoint
 
   let low = {arr, epsiolon: 0}
   let high = {arr: s(arr, 1), epsiolon: 1}
 
-  for (let i = 15;i--;){
-    const halfDist = (high.epsiolon - low.epsiolon) / 2;
-    const center = halfDist + low.epsiolon; 
+  for (let i = 15; i--; ) {
+    const halfDist = (high.epsiolon - low.epsiolon) / 2
+    const center = halfDist + low.epsiolon
 
-    const newArr = s(arr, center);
+    const newArr = s(arr, center)
 
     // console.log(`${low.arr.length.toString().padStart(8)} ${newArr.length.toString().padStart(8)} ${high.arr.length.toString().padStart(8)}`)
     // console.log(`${low.epsiolon.toFixed(6).padStart(8)} ${center.toFixed(6).padStart(8)} ${high.epsiolon.toFixed(6).padStart(8)}`)
 
-    if (Math.floor(newArr.length/10) === Math.floor(points/10))
-      return newArr;
+    if (Math.floor(newArr.length / 10) === Math.floor(points / 10))
+      return newArr
 
     // epsilon is low significant that it's no longer differs array size
-    if (low.arr.length === newArr.length)
-      return newArr
+    if (low.arr.length === newArr.length) return newArr
 
     if (newArr.length < points) {
       high = {arr: newArr, epsiolon: center}
@@ -106,7 +105,7 @@ const simplifyDiagramEntryPointToMaxPoints = (
     }
   }
 
-  return low.arr;
+  return low.arr
 }
 
 export type DiagramEntryPoint = {
@@ -129,7 +128,7 @@ export const useWebSocket = (
   }, [callback, url])
 
   useEffect(() => {
-    if (running){
+    if (running) {
       startListening()
       return () => wsRef.current?.close?.()
     }
@@ -139,6 +138,7 @@ export const useWebSocket = (
     // reconnect a broken WS connection
     const checker = setInterval(() => {
       if (
+        running &&
         wsRef.current &&
         (wsRef.current.readyState === WebSocket.CLOSING ||
           wsRef.current.readyState === WebSocket.CLOSED)
@@ -147,7 +147,7 @@ export const useWebSocket = (
       }
     }, 2000)
     return () => clearInterval(checker)
-  }, [startListening])
+  }, [startListening, running])
 }
 
 const useRafOnce = (callback: () => void, deps: any[] = []) => {
@@ -331,7 +331,11 @@ export const useG2Plot = (
     const data = dataRef.current
 
     if (data === undefined) {
-      plotRef.current?.changeData?.([])
+      if (ctor === Gauge) {
+        plotRef.current?.changeData(0)
+      } else {
+        plotRef.current?.changeData?.([])
+      }
     } else if (typeof data === 'number') plotRef.current?.changeData?.(data)
     else plotRef.current?.changeData?.(getSimplifyedData())
   })

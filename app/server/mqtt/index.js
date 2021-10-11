@@ -1,5 +1,5 @@
 const express = require('express')
-const {MQTT_TOPIC} = require('../env')
+const {MQTT_TOPIC, MQTT_URL} = require('../env')
 const createClient = require('./createClient')
 const setupWsBroker = require('./ws/broker')
 const {Worker} = require('worker_threads')
@@ -19,10 +19,20 @@ let publisherSettings = publisherDefaultSettings
 
 const worker = new Worker('./mqtt/publisher.js')
 
+const MQTT_ENABLED = !!(MQTT_URL && MQTT_TOPIC)
+
 // returns a router instance using an MQTT client configured from env
 async function mqttRouter() {
-  const client = await createClient()
   const router = express.Router()
+  router.use('/enabled', (req, res) => {
+    res.send(JSON.stringify(MQTT_ENABLED))
+  })
+
+  if (!MQTT_ENABLED) {
+    return router
+  }
+
+  const client = await createClient()
   // bigger bodies are expected
   router.use(express.text({limit: '10mb'}))
 

@@ -183,13 +183,17 @@ const gaugesPlotOptions: Record<
         statistic: {
           content: {
             formatter: (x) =>
-              x ? `${(+x.percent * (max - min) + min).toFixed(decimalPlaces ?? 0)}${unit}` : '',
+              x
+                ? `${(+x.percent * (max - min) + min).toFixed(
+                    decimalPlaces ?? 0
+                  )}${unit}`
+                : '',
             style: {},
             offsetY: 30,
           },
         },
         height: 150,
-        padding: [0,0,10,0],
+        padding: [0, 0, 10, 0],
         // renderer: "svg"
       },
     ]
@@ -299,11 +303,33 @@ interface PropsRoute {
 
 interface Props {
   helpCollapsed: boolean
+  mqttEnabled: boolean | undefined
 }
+
+const timeOptionsRealtime: {
+  label: string
+  value: string
+  realtimeRetention: number
+}[] = [
+  {label: 'Live 10s', value: '-10s', realtimeRetention: 10_000},
+  {label: 'Live 30s', value: '-30s', realtimeRetention: 30_000},
+  {label: 'Live 1m', value: '-1m', realtimeRetention: 60_000},
+]
+
+const timeOptions: {label: string; value: string}[] = [
+  {label: 'Past 5m', value: '-5m'},
+  {label: 'Past 15m', value: '-15m'},
+  {label: 'Past 1h', value: '-1h'},
+  {label: 'Past 6h', value: '-6h'},
+  {label: 'Past 1d', value: '-1d'},
+  {label: 'Past 3d', value: '-3d'},
+  {label: 'Past 7d', value: '-7d'},
+  {label: 'Past 30d', value: '-30d'},
+]
 
 const RealTimePage: FunctionComponent<
   RouteComponentProps<PropsRoute> & Props
-> = ({match, history, helpCollapsed}) => {
+> = ({match, history, helpCollapsed, mqttEnabled}) => {
   const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
   // loading is defaultly false
   const [loading, setLoading] = useState(false)
@@ -311,7 +337,7 @@ const RealTimePage: FunctionComponent<
   const [deviceData, setDeviceData] = useState<DeviceData | undefined>()
   const [dataStamp, setDataStamp] = useState(0)
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
-  const [timeStart, setTimeStart] = useState('-10s')
+  const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
 
   const hasDataFieldsRef = useRef<Record<string, boolean>>({})
   const isVirtualDevice = deviceId === VIRTUAL_DEVICE
@@ -319,20 +345,16 @@ const RealTimePage: FunctionComponent<
 
   // #region realtime
 
+  useEffect(() => {
+    if (mqttEnabled === false) {
+      setTimeStart(timeOptions[0].value)
+    }
+  }, [mqttEnabled])
+
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   type Updaters<T> = Record<string, G2PlotUpdater<T>>
   const updatersGaugeRef = useRef<Updaters<Gauge>>({})
   const updatersLineRef = useRef<Updaters<Line>>({})
-
-  const timeOptionsRealtime: {
-    label: string
-    value: string
-    realtimeRetention: number
-  }[] = [
-    {label: 'Live 10s', value: '-10s', realtimeRetention: 10_000},
-    {label: 'Live 30s', value: '-30s', realtimeRetention: 30_000},
-    {label: 'Live 1m', value: '-1m', realtimeRetention: 60_000},
-  ]
 
   const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
 
@@ -554,17 +576,6 @@ const RealTimePage: FunctionComponent<
         })()
       : undefined
 
-  const timeOptions: {label: string; value: string}[] = [
-    {label: 'Past 5m', value: '-5m'},
-    {label: 'Past 15m', value: '-15m'},
-    {label: 'Past 1h', value: '-1h'},
-    {label: 'Past 6h', value: '-6h'},
-    {label: 'Past 1d', value: '-1d'},
-    {label: 'Past 3d', value: '-3d'},
-    {label: 'Past 7d', value: '-7d'},
-    {label: 'Past 30d', value: '-30d'},
-  ]
-
   const pageControls = (
     <>
       <Tooltip title="Choose device" placement="left">
@@ -589,15 +600,30 @@ const RealTimePage: FunctionComponent<
         </Select>
       </Tooltip>
 
-      <Tooltip title="Choose time" placement="left">
+      <Tooltip
+        title={
+          (mqttEnabled === false ? 'MQTT not configured on server! ' : '') +
+          'Choose time'
+        }
+        placement="left"
+      >
         <Select
           value={timeStart}
           onChange={setTimeStart}
           style={{minWidth: 100}}
-          loading={loading}
+          loading={loading || mqttEnabled === undefined}
           disabled={loading}
         >
-          {[...timeOptionsRealtime, ...timeOptions].map(({label, value}) => (
+          {timeOptionsRealtime.map(({label, value}) => (
+            <Select.Option
+              disabled={mqttEnabled === false}
+              key={value}
+              value={value}
+            >
+              {label}
+            </Select.Option>
+          ))}
+          {timeOptions.map(({label, value}) => (
             <Select.Option key={value} value={value}>
               {label}
             </Select.Option>

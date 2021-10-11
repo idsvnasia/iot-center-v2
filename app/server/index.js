@@ -29,7 +29,7 @@ async function startApplication() {
   app.use('/kafka', kafka)
 
   // MQTT write
-  if (MQTT_URL && MQTT_TOPIC) app.use('/mqtt', await mqtt())
+  app.use('/mqtt', await mqtt())
 
   // start proxy to InfluxDB to avoid CORS blocking with InfluXDB OSS v2 Beta
   app.use('/influx', proxy(INFLUX_URL))
