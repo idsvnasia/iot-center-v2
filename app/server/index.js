@@ -7,7 +7,7 @@ const apis = require('./apis')
 const kafka = require('./kafka')
 const mqtt = require('./mqtt')
 const onboardInfluxDB = require('./influxdb/onboarding')
-const {logEnvironment, INFLUX_URL, MQTT_URL, MQTT_TOPIC} = require('./env')
+const {logEnvironment, INFLUX_URL} = require('./env')
 const {monitorResponseTime, startProcessMonitoring} = require('./monitor')
 const {addWebSockets} = require('./ws')
 
@@ -31,6 +31,9 @@ async function startApplication() {
   // MQTT write
   app.use('/mqtt', await mqtt())
 
+  app.use('/influx/enabled', (_req, res) => {
+    res.send(JSON.stringify(!!INFLUX_URL))
+  })
   // start proxy to InfluxDB to avoid CORS blocking with InfluXDB OSS v2 Beta
   app.use('/influx', proxy(INFLUX_URL))
   console.log(`Enable proxy from /influx/* to ${INFLUX_URL}/*`)

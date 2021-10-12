@@ -28,6 +28,7 @@ import {
 import RealTimePage from './pages/RealTimePage'
 import RealTimeSettingsPage from './pages/RealTimeSettingsPage'
 import {PlayCircleOutlined, SettingOutlined} from '@ant-design/icons'
+import NoConfigurationPage from './pages/NoConfigurationPage'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
@@ -77,30 +78,31 @@ const useHelpCollapsed = (): [boolean, (v: boolean) => void] => {
   return [helpCollapsed, changeHelpCollapsed]
 }
 
-const useMqttEnabled = () => {
-  const [mqttEnabled, setMqttEnabled] = useState<boolean | undefined>(undefined)
+const useFetchBoolean = (address: string, deps: any[] = []) => {
+  const [boolean, setBoolean] = useState<boolean | undefined>(undefined)
 
   useEffect(() => {
     const fetchMqttEnabled = async () => {
-      const response = await fetch('/mqtt/enabled')
+      const response = await fetch(address)
       if (response.status >= 300) {
         const text = await response.text()
         throw new Error(`${response.status} ${text}`)
       }
       const data = await response.json()
-      setMqttEnabled(data)
+      setBoolean(data)
     }
 
     fetchMqttEnabled()
-  }, [])
+  }, deps)
 
-  return mqttEnabled
+  return boolean
 }
 
 const App: FunctionComponent<RouteComponentProps> = (props) => {
   const [helpCollapsed, setHelpCollapsed] = useHelpCollapsed()
   const [helpText, setHelpText] = useState('')
-  const mqttEnabled = useMqttEnabled()
+  const mqttEnabled = useFetchBoolean('/mqtt/enabled')
+  const influxEnabled = useFetchBoolean('/influx/enabled')
 
   const help = getPageHelp(props.location.pathname)
 
@@ -119,6 +121,8 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
       })()
     }
   }, [help])
+
+  const hasNoConfiguration = mqttEnabled === false && influxEnabled === false
 
   return (
     <div className="App">
@@ -196,17 +200,28 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
           <Route
             exact
             path="/dashboard/:deviceId"
-            render={(props) => (
-              <DashboardPage {...props} helpCollapsed={helpCollapsed} />
-            )}
+            render={(props) =>
+              hasNoConfiguration ? (
+                <NoConfigurationPage />
+              ) : (
+                <DashboardPage {...props} helpCollapsed={helpCollapsed} />
+              )
+            }
           />
           <Redirect exact from="/realtime" to={`/realtime/${VIRTUAL_DEVICE}`} />
           <Route
             exact
             path="/realtime/:deviceId"
-            render={(props) => (
-              <RealTimePage {...props} {...{helpCollapsed, mqttEnabled}} />
-            )}
+            render={(props) =>
+              hasNoConfiguration ? (
+                <NoConfigurationPage />
+              ) : (
+                <RealTimePage
+                  {...props}
+                  {...{helpCollapsed, mqttEnabled, influxEnabled}}
+                />
+              )
+            }
           />
           <Route
             exact

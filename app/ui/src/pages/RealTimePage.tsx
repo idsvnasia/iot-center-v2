@@ -297,15 +297,6 @@ const giraffeTableToDiagramEntryPoints = (
 
 // #endregion Realtime
 
-interface PropsRoute {
-  deviceId?: string
-}
-
-interface Props {
-  helpCollapsed: boolean
-  mqttEnabled: boolean | undefined
-}
-
 const timeOptionsRealtime: {
   label: string
   value: string
@@ -327,9 +318,19 @@ const timeOptions: {label: string; value: string}[] = [
   {label: 'Past 30d', value: '-30d'},
 ]
 
+interface PropsRoute {
+  deviceId?: string
+}
+
+interface Props {
+  helpCollapsed: boolean
+  mqttEnabled: boolean | undefined
+  influxEnabled: boolean | undefined
+}
+
 const RealTimePage: FunctionComponent<
   RouteComponentProps<PropsRoute> & Props
-> = ({match, history, helpCollapsed, mqttEnabled}) => {
+> = ({match, history, helpCollapsed, mqttEnabled, influxEnabled}) => {
   const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
   // loading is defaultly false
   const [loading, setLoading] = useState(false)
@@ -624,7 +625,11 @@ const RealTimePage: FunctionComponent<
             </Select.Option>
           ))}
           {timeOptions.map(({label, value}) => (
-            <Select.Option key={value} value={value}>
+            <Select.Option
+              disabled={influxEnabled === false}
+              key={value}
+              value={value}
+            >
               {label}
             </Select.Option>
           ))}
