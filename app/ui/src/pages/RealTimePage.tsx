@@ -430,8 +430,11 @@ const RealTimePage: FunctionComponent<
 
   useEffect(() => {
     clearData()
-    updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fields))
-  }, [deviceData])
+    // TODO: somehow clearing data after update, need to be fixed
+    setTimeout(() => {
+      updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fields))
+    }, 100)
+  }, [measurementsTable])
 
   // #endregion realtime
 
@@ -659,25 +662,6 @@ const RealTimePage: FunctionComponent<
       </Tooltip>
     </>
   )
-
-  // fetch device configuration and data
-  useEffect(() => {
-    const fetchData = async () => {
-      clearData()
-      setLoading(true)
-      try {
-        const config = await fetchDeviceConfig(deviceId)
-        const table = await fetchDeviceMeasurements(config, timeStart)
-        const data = giraffeTableToDiagramEntryPoints(table, fields)
-        if (data) updateData(data)
-      } catch (e) {
-        console.error(e)
-      }
-      setLoading(false)
-    }
-
-    if (!isRealtime) fetchData()
-  }, [dataStamp, deviceId, timeStart])
 
   return (
     <PageContent

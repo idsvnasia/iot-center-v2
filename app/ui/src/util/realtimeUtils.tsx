@@ -2,6 +2,18 @@ import {Gauge, Plot} from '@antv/g2plot'
 import React, {useCallback, useEffect, useRef, useState} from 'react'
 import {simplifyForNormalizedData} from './simplyfi'
 
+const DAY_MILLIS = 24 * 60 * 60 * 1000
+
+const linearScale = (min: number, max: number, len: number) => {
+  const step = (max - min) / (len - 1)
+  const arr = [min]
+  for (let i = 1; i < len - 1; i++) {
+    arr.push(min + step * i)
+  }
+  arr.push(max)
+  return arr
+}
+
 export type MinAndMax = {min: number; max: number}
 export const getMinAndMax = (arr: number[]): MinAndMax => {
   let min = Infinity
@@ -272,13 +284,17 @@ export const useG2Plot = (
   const retentionTimeRef = useRef(retentionTimeMs)
   const retentionUsed = () =>
     retentionTimeRef.current !== Infinity && retentionTimeRef.current > 0
-  const getLatestDataTime = () => {
+  const getMinMaxDataTime = () => {
     const data = dataRef.current
 
     if (data === undefined) return undefined
-    if (typeof data === 'number') return getLastPoint([])?.time
+    if (typeof data === 'number') {
+      const time = getLastPoint([])?.time
+      if (time) return {min: time, max: time}
+      return undefined
+    }
     if (!data.length) return undefined
-    return getMinAndMax(data.map((x) => x.time)).max
+    return getMinAndMax(data.map((x) => x.time))
   }
   const getSimplifyedData = () => {
     const data = dataRef.current as DiagramEntryPoint[]
@@ -298,20 +314,37 @@ export const useG2Plot = (
     const data = dataRef.current
     const now = Date.now()
 
+    const dataTimeMinMax = getMinMaxDataTime()
     return {
       ...g2PlotDefaults,
       ...(retentionUsed() ? {padding: [22, 28]} : {}),
       ...opts,
       xAxis: {
         ...g2PlotDefaults?.xAxis,
+        ...dataTimeMinMax,
+        ...(typeof dataTimeMinMax === 'object'
+          ? {
+              tickMethod: () =>
+                retentionUsed()
+                  ? linearScale(
+                      now - retentionTimeRef.current,
+                      dataTimeMinMax!.max,
+                      8
+                    ).map(Math.round)
+                  : linearScale(
+                      dataTimeMinMax!.min,
+                      dataTimeMinMax!.max,
+                      8
+                    ).map(Math.round),
+            }
+          : {}),
         ...(retentionUsed()
           ? {
               min: now - retentionTimeRef.current,
-              max: getLatestDataTime(),
               // tickMethod: 'wilkinson-extended',
-              tickMethod: 'time-cat',
+              // tickMethod: 'time-cat',
             }
-          : {min: undefined, max: undefined}),
+          : {}),
         mask: maskRef.current,
         ...opts?.xAxis,
       },
@@ -352,13 +385,12 @@ export const useG2Plot = (
   const updateMask = () => {
     if (!Array.isArray(dataRef.current)) return false
 
-    const dayMillis = 24 * 60 * 60 * 1000
     const prevMask = maskRef.current
 
-    if (dataRef.current.some((x) => x.time < Date.now() - 3 * dayMillis))
-      maskRef.current = maskDateTime
-    else if (dataRef.current.some((x) => x.time < Date.now() - dayMillis))
+    if (dataRef.current.some((x) => x.time < Date.now() - 3 * DAY_MILLIS))
       maskRef.current = maskDate
+    else if (dataRef.current.some((x) => x.time < Date.now() - DAY_MILLIS))
+      maskRef.current = maskDateTime
     else maskRef.current = maskTime
 
     return prevMask !== maskRef.current
@@ -379,9 +411,7 @@ export const useG2Plot = (
 
     const maskChanged = updateMask()
 
-    // TODO: if data has length over full length of time, use invalidate instead (probably will be faster ?)
-    if (retentionUsed() || maskChanged) redraw()
-    else invalidate()
+    redraw()
   }
 
   const plotObjRef = useRef({element, update} as const)
