@@ -74,7 +74,8 @@ const simplifyDiagramEntryPoint = (
 
 const simplifyDiagramEntryPointToMaxPoints = (
   arr: DiagramEntryPoint[],
-  points = 5_000
+  points = 200,
+  minimalPoints = 50
 ) => {
   if (arr.length < points) return arr
 
@@ -89,23 +90,36 @@ const simplifyDiagramEntryPointToMaxPoints = (
 
     const newArr = s(arr, center)
 
-    // console.log(`${low.arr.length.toString().padStart(8)} ${newArr.length.toString().padStart(8)} ${high.arr.length.toString().padStart(8)}`)
-    // console.log(`${low.epsiolon.toFixed(6).padStart(8)} ${center.toFixed(6).padStart(8)} ${high.epsiolon.toFixed(6).padStart(8)}`)
-
-    if (Math.floor(newArr.length / 10) === Math.floor(points / 10))
-      return newArr
+    // console.log(`${i.toString().padStart(2)} ${low.arr.length.toString().padStart(8)} ${newArr.length.toString().padStart(8)} ${high.arr.length.toString().padStart(8)}`)
+    // console.log(`   ${low.epsiolon.toFixed(6).padStart(8)} ${center.toFixed(6).padStart(8)} ${high.epsiolon.toFixed(6).padStart(8)}`)
 
     // epsilon is low significant that it's no longer differs array size
-    if (low.arr.length === newArr.length) return newArr
+    if (low.arr.length === newArr.length) break
 
     if (newArr.length < points) {
       high = {arr: newArr, epsiolon: center}
     } else {
       low = {arr: newArr, epsiolon: center}
     }
+
+    // we are close enough to stop algorithm
+    if (Math.floor(high.arr.length / 10) === Math.floor(points / 10)) break
   }
 
-  return low.arr
+  // alternative way for straight lines
+  // todo: test more
+  if (high.arr.length < minimalPoints) {
+    const step = arr.length / minimalPoints
+    const newArr = [arr[0]]
+    for (let i = 1; i < minimalPoints - 1; i++) {
+      newArr.push(arr[Math.floor(i * step)])
+    }
+    newArr.push(arr[arr.length - 1])
+
+    return newArr
+  }
+
+  return high.arr
 }
 
 export type DiagramEntryPoint = {
@@ -273,16 +287,15 @@ export const useG2Plot = (
   const getSimplifyedData = () => {
     const data = dataRef.current as DiagramEntryPoint[]
 
-    if (data.length > 5_000) {
-      const newData = simplifyDiagramEntryPointToMaxPoints(data)
+    const newData = simplifyDiagramEntryPointToMaxPoints(data)
+    if (newData.length !== data.length)
       console.log(
         `data simplified from ${data.length
           .toString()
           .padStart(6)} to ${newData.length.toString().padStart(6)}`
       )
 
-      return newData
-    } else return data
+    return newData
   }
 
   const getPlotOptions = () => {
