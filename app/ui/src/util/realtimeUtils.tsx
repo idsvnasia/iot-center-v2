@@ -165,17 +165,13 @@ export const useWebSocket = (
 }
 
 const useRafOnce = (callback: () => void, deps: any[] = []) => {
-  const calledRef = useRef(false)
+  const handleRef = useRef(-1)
 
   const fnc = useCallback(callback, deps)
 
   return useCallback(() => {
-    if (calledRef.current) return
-    calledRef.current = true
-    requestAnimationFrame(() => {
-      calledRef.current = false
-      fnc()
-    })
+    cancelAnimationFrame(handleRef.current)
+    handleRef.current = requestAnimationFrame(fnc)
   }, [fnc])
 }
 

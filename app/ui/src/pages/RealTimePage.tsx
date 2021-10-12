@@ -422,9 +422,11 @@ const RealTimePage: FunctionComponent<
       updatersLineRef.current[measurement]?.(undefined)
     }
   }
-  useEffect(clearData, [deviceId, isRealtime, dataStamp])
 
-  // TODO: on deviceData change clear data and set newOne
+  useEffect(() => {
+    if (isRealtime) clearData()
+  }, [isRealtime])
+  useEffect(clearData, [deviceId])
 
   useEffect(() => {
     clearData()
