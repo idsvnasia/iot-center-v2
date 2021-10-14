@@ -31,9 +31,6 @@ import {VIRTUAL_DEVICE} from '../App'
 import {colorLink, colorPrimary, colorText} from '../styles/colors'
 import {IconRefresh, IconSettings} from '../styles/icons'
 
-import {MapContainer, TileLayer} from 'react-leaflet'
-import AntPathWrapper from '../util/antPathWrapper'
-
 interface DeviceConfig {
   influx_url: string
   influx_org: string
@@ -82,7 +79,7 @@ const fetchDeviceMeasurements = async (
   from(bucket: ${bucket})
     |> range(start: ${fluxDuration(timeStart)})
     |> filter(fn: (r) => r._measurement == "environment")
-    |> filter(fn: (r) => r["_field"] == "Temperature" or r["_field"] == "TVOC" or r["_field"] == "Pressure" or r["_field"] == "Humidity" or r["_field"] == "CO2" or r["_field"] == "Lat" or r["_field"] == "Lon")
+    |> filter(fn: (r) => r["_field"] == "Temperature" or r["_field"] == "TVOC" or r["_field"] == "Pressure" or r["_field"] == "Humidity" or r["_field"] == "CO2")
     |> filter(fn: (r) => r.clientId == ${id})
     |> v1.fieldsAsCols()`
   )
@@ -365,41 +362,6 @@ const DashboardPage: FunctionComponent<
     </>
   ) : undefined
 
-  const geo =
-    measurementsTable && measurementsTable?.length
-      ? (() => {
-          const latCol = measurementsTable.getColumn(
-            'Lat',
-            'number'
-          ) as number[]
-          const lonCol = measurementsTable.getColumn(
-            'Lon',
-            'number'
-          ) as number[]
-          const last = <T,>(arr: T[]) => arr[arr.length - 1]
-          if (!lonCol || !latCol) return undefined
-
-          const track = latCol.map<[number, number]>((x, i) => [x, lonCol[i]])
-
-          // Made from basic react-leaflet example https://react-leaflet.js.org/docs/start-setup
-          return (
-            <>
-              <MapContainer
-                style={{width: '100%', height: '500px'}}
-                center={track.length ? track[track.length - 1] : undefined}
-                zoom={6}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <AntPathWrapper positions={track} />
-              </MapContainer>
-              <Divider />
-            </>
-          )
-        })()
-      : undefined
 
   const renderPlot = (
     lineDefinition: Partial<LineLayerConfig> | undefined,
@@ -566,7 +528,6 @@ const DashboardPage: FunctionComponent<
       {deviceData?.measurementsTable?.length ? (
         <>
           {gauges}
-          {geo}
           {plots}
         </>
       ) : (
