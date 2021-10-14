@@ -1,5 +1,5 @@
 import {Button, Card, Select, Tooltip} from 'antd'
-import {Line, Gauge, GaugeOptions, LineOptions, Area} from '@antv/g2plot'
+import {Line, Gauge, GaugeOptions, LineOptions} from '@antv/g2plot'
 import React, {FunctionComponent, useEffect, useState} from 'react'
 import PageContent, {Message} from './PageContent'
 import {useRef} from 'react'
@@ -18,19 +18,9 @@ import {Table as GiraffeTable} from '@influxdata/giraffe'
 import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
 import {Row, Col, Collapse, Empty, Divider} from 'antd'
-import {
-  Plot,
-  timeFormatter,
-  GAUGE_THEME_LIGHT,
-  GaugeLayerConfig,
-  LineLayerConfig,
-} from '@influxdata/giraffe'
 import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
-import {getXDomainFromTable} from '../util/tableUtils'
-import {colorLink, colorPrimary, colorText} from '../styles/colors'
-
-// TODO: unify naming - column/field etc.
+import {colorLink, colorPrimary} from '../styles/colors'
 
 interface DeviceConfig {
   influx_url: string
@@ -88,7 +78,7 @@ const fetchDeviceMeasurements = async (
 
 // fetchDeviceDataFieldLast replaced by taking data from fetchDeviceMeasurements
 
-// we replaced giraffe with non-react library to handle faster rerendering
+// we have replaced giraffe with non-react library to handle faster rerendering
 
 type MeasurementDefinition = {
   min: number
@@ -127,8 +117,6 @@ const measurementsDefinitions: Record<string, MeasurementDefinition> = {
 }
 const fields = Object.keys(measurementsDefinitions)
 
-// TODO: implement decimal places logic
-// todo: styling
 const gaugesPlotOptions: Record<
   string,
   Omit<GaugeOptions, 'percent'>
@@ -340,9 +328,24 @@ const RealTimePage: FunctionComponent<
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
   const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
 
-  const hasDataFieldsRef = useRef<Record<string, boolean>>({})
   const isVirtualDevice = deviceId === VIRTUAL_DEVICE
   const measurementsTable = deviceData?.measurementsTable
+
+  const [receivedDataFields, setReceivedDataFields] = useState<string[]>([])
+  const noDataFields = fields.filter(
+    (x) => !receivedDataFields.some((y) => y === x)
+  )
+  const updateReceivedDataFields = (updatedFields: string[]) => {
+    setReceivedDataFields((prevState) => {
+      const newFields = updatedFields.filter(
+        (x) => !prevState.some((y) => x === y)
+      )
+      if (!newFields.length) return prevState
+      return [...prevState, ...newFields]
+    })
+  }
+  const clearReceivedDataFields = () =>
+    setReceivedDataFields((prevState) => (prevState.length ? [] : prevState))
 
   // #region realtime
 
@@ -376,15 +379,11 @@ const RealTimePage: FunctionComponent<
   const updateData = (data: DiagramEntryPoint[] | undefined) => {
     if (data === undefined) return
 
-    // register data received
-    const hasData = hasDataFieldsRef.current
-    fields
-      .filter((x) => !hasData[x])
-      .filter((x) => data.some((p) => x === p.key))
-      .forEach((x) => (hasData[x] = true))
+    const updatedFields: string[] = []
 
     for (const field of fields) {
       const lineData = data.filter(({key}) => key === field)
+      if (lineData.length) updatedFields.push(field)
 
       const {min, max} = measurementsDefinitions[field]
       const gaugeData = lineData.map((x) => ({
@@ -395,6 +394,8 @@ const RealTimePage: FunctionComponent<
       updatersLineRef.current[field]?.(lineData)
       updatersGaugeRef.current[field]?.(gaugeData)
     }
+
+    updateReceivedDataFields(updatedFields)
   }
 
   const updatePoints = (points: Point[]) => {
@@ -416,7 +417,7 @@ const RealTimePage: FunctionComponent<
   useRealtimeData(subscriptions, useRef(updatePoints).current)
 
   const clearData = () => {
-    hasDataFieldsRef.current = {}
+    clearReceivedDataFields()
     for (const measurement of fields) {
       updatersGaugeRef.current[measurement]?.(0)
       updatersLineRef.current[measurement]?.(undefined)
@@ -487,7 +488,6 @@ const RealTimePage: FunctionComponent<
     fetchDevices()
   }, [])
 
-  // todo: implement
   const renderGauge = (
     column: string,
     gauge: Omit<GaugeOptions, 'percent'>
@@ -501,45 +501,39 @@ const RealTimePage: FunctionComponent<
     />
   )
 
-  // todo: implement
-  const gaugeLastTimeMessage = (time: number) => {
-    const now = Date.now()
-    const diff = now - time
+  // gaugeLastTimeMessage not supported in this demo helper realtimeUtils mini-library
 
-    if (diff < 60_000) return 'just now'
-    if (diff < 300_000) return 'less than 5 min ago'
-    if (diff < 900_000) return 'more than 5 min ago'
-    return 'long time ago'
-  }
-
-  // todo: implement
   const gauges =
     deviceData?.measurementsTable?.length || isRealtime ? (
       <>
         <Row gutter={[22, 22]}>
-          {Object.entries(gaugesPlotOptions).map(([column, gauge]) => {
-            return (
-              <Col
-                sm={helpCollapsed ? 24 : 24}
-                md={helpCollapsed ? 12 : 24}
-                xl={helpCollapsed ? 6 : 12}
-              >
-                <Card title={column}>{renderGauge(column, gauge)}</Card>
-              </Col>
-            )
-          })}
+          {fields
+            .map((column) => ({
+              column,
+              gauge: gaugesPlotOptions[column],
+              visible: receivedDataFields.some((x) => x === column),
+            }))
+            .map(({column, gauge, visible}) => {
+              return (
+                <Col
+                  sm={helpCollapsed ? 24 : 24}
+                  md={helpCollapsed ? 12 : 24}
+                  xl={helpCollapsed ? 6 : 12}
+                  style={visible ? {} : {display: 'none'}}
+                >
+                  <Card title={column}>{renderGauge(column, gauge)}</Card>
+                </Col>
+              )
+            })}
         </Row>
         <Divider style={{color: 'rgba(0, 0, 0, .2)'}} orientation="right">
-          {/* 
-          {gaugeMissingValues.length
-            ? `Gauge missing values: ${gaugeMissingValues.join(', ')}`
-            : undefined} 
-            */}
+          {noDataFields.length
+            ? `No data for: ${noDataFields.join(', ')}`
+            : undefined}
         </Divider>
       </>
     ) : undefined
 
-  // todo: implement
   const renderPlot = (column: string, line: Omit<LineOptions, 'data'>) => (
     <G2Plot
       type={Line}
@@ -549,39 +543,40 @@ const RealTimePage: FunctionComponent<
     />
   )
 
-  // todo: implement
-  const plots =
-    (measurementsTable && measurementsTable?.length) || isRealtime
-      ? (() => {
-          return (
-            <>
-              <Row gutter={[0, 24]}>
-                {Object.entries(linePlotOptions).map(([column, line], i) => (
-                  <Col xs={24}>
-                    <Collapse defaultActiveKey={[i]}>
-                      <CollapsePanel key={i} header={column}>
-                        {renderPlot(column, line)}
-                      </CollapsePanel>
-                    </Collapse>
-                  </Col>
-                ))}
-              </Row>
-              {/* {measurementsNoValues.length ? (
-            <Collapse>
-              {measurementsNoValues.map(({title}, i) => (
-                <CollapsePanel
-                  key={i}
-                  disabled={true}
-                  header={`${title} - No data`}
-                />
-              ))}
-            </Collapse>
-          ) : undefined} */}
-            </>
-          )
-        })()
-      : undefined
-
+  const plots = (() => {
+    return (
+      <>
+        <Row gutter={[0, 24]}>
+          {fields
+            .map((column) => ({
+              column,
+              line: linePlotOptions[column],
+              visible: receivedDataFields.some((x) => x === column),
+            }))
+            .map(({column, line, visible}, i) => (
+              <Col xs={24} style={visible ? {} : {display: 'none'}}>
+                <Collapse defaultActiveKey={[i]}>
+                  <CollapsePanel key={i} header={column}>
+                    {renderPlot(column, line)}
+                  </CollapsePanel>
+                </Collapse>
+              </Col>
+            ))}
+        </Row>
+        {noDataFields.length ? (
+          <Collapse>
+            {noDataFields.map((field, i) => (
+              <CollapsePanel
+                key={i}
+                disabled={true}
+                header={`${field} - No data`}
+              />
+            ))}
+          </Collapse>
+        ) : undefined}
+      </>
+    )
+  })()
   const pageControls = (
     <>
       <Tooltip title="Choose device" placement="left">
@@ -680,11 +675,12 @@ const RealTimePage: FunctionComponent<
       spin={loading}
       forceShowScroll={true}
     >
-      {deviceData?.measurementsTable?.length || isRealtime ? (
-        <>
-          {gauges}
-          {plots}
-        </>
+      <div style={receivedDataFields.length ? {} : {display: 'none'}}>
+        {gauges}
+        {plots}
+      </div>
+      {receivedDataFields.length ? (
+        <></>
       ) : (
         <Card>
           <Empty />

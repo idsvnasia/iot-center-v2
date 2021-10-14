@@ -86,8 +86,8 @@ const simplifyDiagramEntryPoint = (
 
 const simplifyDiagramEntryPointToMaxPoints = (
   arr: DiagramEntryPoint[],
-  points = 200,
-  minimalPoints = 50
+  points = 1000,
+  minimalPoints = 200
 ) => {
   if (arr.length < points) return arr
 
