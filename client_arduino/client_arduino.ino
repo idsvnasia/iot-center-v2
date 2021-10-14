@@ -1,4 +1,4 @@
-#define VERSION "0.51"
+#define VERSION "0.52"
 // Set WiFi AP SSID
 #define WIFI_SSID "SSID"
 // Set WiFi password
@@ -7,6 +7,7 @@
 #define IOT_CENTER_URL "http://IP:5000"
 
 //#define MEMORY_DEBUG    //Uncomment if you want to debug memory usage
+//#define REAL_TIME
 #define DEFAULT_CONFIG_REFRESH 3600
 #define DEFAULT_MEASUREMENT_INTERVAL 60
 #define MIN_FREE_MEMORY 15000   //memory leaks prevention
@@ -232,9 +233,18 @@ bool writeData() {
     return writeMQTT( getMeasurementStr());
 }
 
-void writeLoop() {
-  if ( dataIntf == i_mqtt)
+void writeLoop() {  //Keep alive the connection
+  if ( dataIntf == i_mqtt) {
+#if defined(REAL_TIME)
+    // Read measurements from all the sensors
+    tMeasurement* pm = mBuff.getTail();
+    pm->timestamp = time(nullptr);
+    readSensors( pm);
+    measurementToLineProtocol( pm);
+    writeMQTT( getMeasurementStr());
+#endif
     return loopMQTT();
+  }
 }
 
 void _delay( unsigned long t) {
