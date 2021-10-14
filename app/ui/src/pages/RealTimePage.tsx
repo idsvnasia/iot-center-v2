@@ -346,6 +346,8 @@ const RealTimePage: FunctionComponent<
   }
   const clearReceivedDataFields = () =>
     setReceivedDataFields((prevState) => (prevState.length ? [] : prevState))
+  const hasData = (column: string) =>
+    receivedDataFields.some((x) => x === column)
 
   // #region realtime
 
@@ -488,16 +490,13 @@ const RealTimePage: FunctionComponent<
     fetchDevices()
   }, [])
 
-  const renderGauge = (
-    column: string,
-    gauge: Omit<GaugeOptions, 'percent'>
-  ) => (
+  const renderGauge = (column: string) => (
     <G2Plot
       type={Gauge}
       onUpdaterChange={(updater) =>
         (updatersGaugeRef.current[column] = updater)
       }
-      options={gauge}
+      options={gaugesPlotOptions[column]}
     />
   )
 
@@ -507,24 +506,19 @@ const RealTimePage: FunctionComponent<
     deviceData?.measurementsTable?.length || isRealtime ? (
       <>
         <Row gutter={[22, 22]}>
-          {fields
-            .map((column) => ({
-              column,
-              gauge: gaugesPlotOptions[column],
-              visible: receivedDataFields.some((x) => x === column),
-            }))
-            .map(({column, gauge, visible}) => {
-              return (
-                <Col
-                  sm={helpCollapsed ? 24 : 24}
-                  md={helpCollapsed ? 12 : 24}
-                  xl={helpCollapsed ? 6 : 12}
-                  style={visible ? {} : {display: 'none'}}
-                >
-                  <Card title={column}>{renderGauge(column, gauge)}</Card>
-                </Col>
-              )
-            })}
+          {fields.map((column, i) => {
+            return (
+              <Col
+                sm={helpCollapsed ? 24 : 24}
+                md={helpCollapsed ? 12 : 24}
+                xl={helpCollapsed ? 6 : 12}
+                style={hasData(column) ? {} : {display: 'none'}}
+                key={i}
+              >
+                <Card title={column}>{renderGauge(column)}</Card>
+              </Col>
+            )
+          })}
         </Row>
         <Divider style={{color: 'rgba(0, 0, 0, .2)'}} orientation="right">
           {noDataFields.length
@@ -534,11 +528,11 @@ const RealTimePage: FunctionComponent<
       </>
     ) : undefined
 
-  const renderPlot = (column: string, line: Omit<LineOptions, 'data'>) => (
+  const renderPlot = (column: string) => (
     <G2Plot
       type={Line}
       onUpdaterChange={(updater) => (updatersLineRef.current[column] = updater)}
-      options={line}
+      options={linePlotOptions[column]}
       retentionTimeMs={retentionTime}
     />
   )
@@ -547,29 +541,27 @@ const RealTimePage: FunctionComponent<
     return (
       <>
         <Row gutter={[0, 24]}>
-          {fields
-            .map((column) => ({
-              column,
-              line: linePlotOptions[column],
-              visible: receivedDataFields.some((x) => x === column),
-            }))
-            .map(({column, line, visible}, i) => (
-              <Col xs={24} style={visible ? {} : {display: 'none'}}>
-                <Collapse defaultActiveKey={[i]}>
-                  <CollapsePanel key={i} header={column}>
-                    {renderPlot(column, line)}
-                  </CollapsePanel>
-                </Collapse>
-              </Col>
-            ))}
+          {fields.map((field, i) => (
+            <Col
+              xs={24}
+              style={hasData(field) ? {} : {display: 'none'}}
+              key={i}
+            >
+              <Collapse defaultActiveKey={[i]}>
+                <CollapsePanel key={i} header={field}>
+                  {renderPlot(field)}
+                </CollapsePanel>
+              </Collapse>
+            </Col>
+          ))}
         </Row>
         {noDataFields.length ? (
           <Collapse>
             {noDataFields.map((field, i) => (
               <CollapsePanel
-                key={i}
-                disabled={true}
+                collapsible="disabled"
                 header={`${field} - No data`}
+                key={i}
               />
             ))}
           </Collapse>
@@ -679,13 +671,11 @@ const RealTimePage: FunctionComponent<
         {gauges}
         {plots}
       </div>
-      {receivedDataFields.length ? (
-        <></>
-      ) : (
+      {!receivedDataFields.length ? (
         <Card>
           <Empty />
         </Card>
-      )}
+      ) : undefined}
     </PageContent>
   )
 }
