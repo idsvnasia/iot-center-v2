@@ -411,7 +411,8 @@ export const useG2Plot = (
 
     const maskChanged = updateMask()
 
-    redraw()
+    if (ctor === Gauge) invalidate()
+    else redraw()
   }
 
   const plotObjRef = useRef({element, update} as const)

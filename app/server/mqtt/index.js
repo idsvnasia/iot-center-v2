@@ -7,13 +7,6 @@ const {Worker} = require('worker_threads')
 const publisherDefaultSettings = {
   running: true,
   sendInterval: 100,
-  measurements: {
-    Temperature: {period: 30, min: 0, max: 40},
-    Humidity: {period: 90, min: 0, max: 99},
-    Pressure: {period: 20, min: 970, max: 1050},
-    CO2: {period: 1, min: 400, max: 3000},
-    TVOC: {period: 1, min: 250, max: 2000},
-  },
 }
 let publisherSettings = publisherDefaultSettings
 
@@ -40,10 +33,6 @@ async function mqttRouter() {
 
   router.get('/settings', async (req, res) => {
     res.json(publisherSettings)
-  })
-
-  router.get('/settings/defaults', async (req, res) => {
-    res.json(publisherDefaultSettings)
   })
 
   router.post('/settings', async (req, res) => {

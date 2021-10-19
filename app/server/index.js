@@ -31,9 +31,6 @@ async function startApplication() {
   // MQTT write
   app.use('/mqtt', await mqtt())
 
-  app.use('/influx/enabled', (_req, res) => {
-    res.send(JSON.stringify(!!INFLUX_URL))
-  })
   // start proxy to InfluxDB to avoid CORS blocking with InfluXDB OSS v2 Beta
   app.use('/influx', proxy(INFLUX_URL))
   console.log(`Enable proxy from /influx/* to ${INFLUX_URL}/*`)

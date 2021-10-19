@@ -6,6 +6,14 @@ const {parentPort} = require('worker_threads')
 
 let sendDataHandle = -1
 
+const measurements = [
+  {name: 'Temperature', period: 30, min: 0, max: 40},
+  {name: 'Humidity', period: 90, min: 0, max: 99},
+  {name: 'Pressure', period: 20, min: 970, max: 1050},
+  {name: 'CO2', period: 1, min: 400, max: 3000},
+  {name: 'TVOC', period: 1, min: 250, max: 2000},
+]
+
 parentPort.on('message', async (data) => {
   if (!(MQTT_URL && MQTT_TOPIC))
     throw new Error('MQTT_URL and MQTT_TOPIC not specified')
@@ -22,11 +30,8 @@ parentPort.on('message', async (data) => {
   const sendData = async () => {
     const point = new Point('environment')
     const now = Date.now()
-    Object.entries(data.measurements).forEach(([name, options]) => {
-      point.floatField(
-        name,
-        generateValue(options.period, options.min, options.max, now)
-      )
+    measurements.forEach(({name, max, min, period}) => {
+      point.floatField(name, generateValue(period, min, max, now))
     })
     point
       .tag('TemperatureSensor', 'virtual_TemperatureSensor')

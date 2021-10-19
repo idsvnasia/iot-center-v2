@@ -13,12 +13,13 @@ import {
   fetchGPXData,
   generateGPXData,
 } from '../util/generateValue'
-import {InfoCircleFilled} from '@ant-design/icons'
+import {InfoCircleFilled, PlayCircleOutlined} from '@ant-design/icons'
 import Table, {ColumnsType} from 'antd/lib/table'
 import {colorLink} from '../styles/colors'
 import {Title} from '../util/Antd.utils'
 import {GridDescription} from '../util/GridDescription'
 import {IconDashboard, IconRefresh, IconWriteData} from '../styles/icons'
+import RealTimeSettings from '../util/RealTimeSettings'
 
 interface DeviceConfig {
   influx_url: string
@@ -194,11 +195,12 @@ interface PropsRoute {
 
 interface Props {
   helpCollapsed: boolean
+  mqttEnabled: boolean | undefined
 }
 
 const DevicePage: FunctionComponent<
   RouteComponentProps<PropsRoute> & Props
-> = ({match, location, helpCollapsed}) => {
+> = ({match, location, helpCollapsed, mqttEnabled}) => {
   const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<Message | undefined>()
@@ -292,6 +294,13 @@ const DevicePage: FunctionComponent<
           onClick={() => setDataStamp(dataStamp + 1)}
           icon={<IconRefresh />}
         />
+      </Tooltip>
+      <Tooltip title="Go to device realtime dashboard" placement="topRight">
+        <Button
+          type={mqttEnabled ? 'default' : 'ghost'}
+          icon={<PlayCircleOutlined />}
+          href={`/realtime/${deviceId}`}
+        ></Button>
       </Tooltip>
       <Tooltip title="Go to device dashboard" placement="topRight">
         <Button
@@ -400,6 +409,8 @@ const DevicePage: FunctionComponent<
         columns={columnDefinitions}
         pagination={false}
       />
+      <div style={{height: 20}} />
+      {isVirtualDevice && mqttEnabled ? <RealTimeSettings /> : undefined}
     </PageContent>
   )
 }

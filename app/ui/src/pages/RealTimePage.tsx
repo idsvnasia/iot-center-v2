@@ -143,8 +143,8 @@ const gaugesPlotOptions: Record<
           label: {
             formatter: (v) =>
               max < 1000
-                ? (+v * (max - min) + min).toFixed(0) + unit
-                : ((+v * (max - min) + min) / 1000).toFixed(0) + 'k' + unit,
+                ? (+v * (max - min) + min).toFixed(0)
+                : ((+v * (max - min) + min) / 1000).toFixed(0) + 'K',
             offset: -30,
             style: {
               fontSize: 12,
@@ -237,7 +237,6 @@ const useRealtimeData = (
   subscriptions: Subscription[],
   onReceivePoints: (pts: Point[]) => void
 ) => {
-  // todo: disable when wsAddress not availeble
   const wsInit = useCallback<(ws: WebSocket) => void>(
     (ws) => {
       ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
@@ -313,12 +312,12 @@ interface PropsRoute {
 interface Props {
   helpCollapsed: boolean
   mqttEnabled: boolean | undefined
-  influxEnabled: boolean | undefined
 }
 
 const RealTimePage: FunctionComponent<
   RouteComponentProps<PropsRoute> & Props
-> = ({match, history, helpCollapsed, mqttEnabled, influxEnabled}) => {
+> = ({match, history, helpCollapsed, mqttEnabled}) => {
+  const influxEnabled = true as boolean
   const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
   // loading is defaultly false
   const [loading, setLoading] = useState(false)
@@ -502,31 +501,31 @@ const RealTimePage: FunctionComponent<
 
   // gaugeLastTimeMessage not supported in this demo helper realtimeUtils mini-library
 
-  const gauges =
-    deviceData?.measurementsTable?.length || isRealtime ? (
-      <>
-        <Row gutter={[22, 22]}>
-          {fields.map((column, i) => {
-            return (
-              <Col
-                sm={helpCollapsed ? 24 : 24}
-                md={helpCollapsed ? 12 : 24}
-                xl={helpCollapsed ? 6 : 12}
-                style={hasData(column) ? {} : {display: 'none'}}
-                key={i}
-              >
-                <Card title={column}>{renderGauge(column)}</Card>
-              </Col>
-            )
-          })}
-        </Row>
-        <Divider style={{color: 'rgba(0, 0, 0, .2)'}} orientation="right">
-          {noDataFields.length
-            ? `No data for: ${noDataFields.join(', ')}`
-            : undefined}
-        </Divider>
-      </>
-    ) : undefined
+  const gauges = (
+    <Row gutter={[22, 22]}>
+      {fields.map((column, i) => {
+        return (
+          <Col
+            sm={helpCollapsed ? 24 : 24}
+            md={helpCollapsed ? 12 : 24}
+            xl={helpCollapsed ? 6 : 12}
+            style={hasData(column) ? {} : {display: 'none'}}
+            key={i}
+          >
+            <Card title={column}>{renderGauge(column)}</Card>
+          </Col>
+        )
+      })}
+    </Row>
+  )
+
+  const plotDivider = (
+    <Divider style={{color: 'rgba(0, 0, 0, .2)'}} orientation="right">
+      {noDataFields.length
+        ? `No data for: ${noDataFields.join(', ')}`
+        : undefined}
+    </Divider>
+  )
 
   const renderPlot = (column: string) => (
     <G2Plot
@@ -569,6 +568,7 @@ const RealTimePage: FunctionComponent<
       </>
     )
   })()
+  // TODO: add realtime button to device settings
   const pageControls = (
     <>
       <Tooltip title="Choose device" placement="left">
@@ -669,6 +669,7 @@ const RealTimePage: FunctionComponent<
     >
       <div style={receivedDataFields.length ? {} : {display: 'none'}}>
         {gauges}
+        {plotDivider}
         {plots}
       </div>
       {!receivedDataFields.length ? (
