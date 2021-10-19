@@ -1,5 +1,5 @@
 import {Gauge, Plot} from '@antv/g2plot'
-import React, {useCallback, useEffect, useRef, useState} from 'react'
+import React, {useCallback, useEffect, useRef} from 'react'
 import {simplifyForNormalizedData} from './simplyfi'
 
 const DAY_MILLIS = 24 * 60 * 60 * 1000
@@ -144,7 +144,7 @@ export const useWebSocket = (
   callback: (ws: WebSocket) => void,
   url: string,
   running = true
-) => {
+): void => {
   const wsRef = useRef<WebSocket>()
 
   const startListening = useCallback(() => {
@@ -176,18 +176,14 @@ export const useWebSocket = (
   }, [startListening, running])
 }
 
-const useRafOnce = (callback: () => void, deps: any[] = []) => {
+const useRafOnce = (callback: () => void) => {
   const handleRef = useRef(-1)
-
-  const fnc = useCallback(callback, deps)
 
   return useCallback(() => {
     cancelAnimationFrame(handleRef.current)
-    handleRef.current = requestAnimationFrame(fnc)
-  }, [fnc])
+    handleRef.current = requestAnimationFrame(callback)
+  }, [callback])
 }
-
-const formatter = (v: string) => new Date(+v).toLocaleTimeString()
 
 export const maskTime = 'hh:mm:ss'
 export const maskDate = 'DD/MM/YY'
@@ -252,6 +248,20 @@ const applyRetention = (arr: DiagramEntryPoint[], retentionTimeMs: number) => {
   }
 }
 
+const getMinMaxDataTime = (
+  data: number | DiagramEntryPoint[] | undefined,
+  getLastPoint: ReturnType<typeof useLastDiagramEntryPointGetter>
+) => {
+  if (data === undefined) return undefined
+  if (typeof data === 'number') {
+    const time = getLastPoint([])?.time
+    if (time) return {min: time, max: time}
+    return undefined
+  }
+  if (!data.length) return undefined
+  return getMinAndMax(data.map((x) => x.time))
+}
+
 export type PlotConstructor = new (...args: any[]) => Plot<any>
 export type G2PlotOptionsNoData<T> = Omit<
   ConstructorParameters<new (...args: any[]) => Plot<T>>[1],
@@ -265,11 +275,16 @@ export type G2PlotUpdater<PlotType> = (
     | (PlotType extends Gauge ? number : never)
 ) => void
 
+type G2PlotHook = {
+  readonly element: JSX.Element
+  readonly update: G2PlotUpdater<Plot<any>>
+}
+
 export const useG2Plot = (
   ctor: PlotConstructor,
   opts?: Omit<ConstructorParameters<PlotConstructor>[1], 'data' | 'percent'>,
   retentionTimeMs = Infinity
-) => {
+): G2PlotHook => {
   type PlotType = InstanceType<PlotConstructor>
 
   // todo: use one ref for everything
@@ -278,43 +293,20 @@ export const useG2Plot = (
   const maskRef = useRef(maskTime)
   const getLastPoint = useLastDiagramEntryPointGetter()
 
-  const elementRef = useRef<HTMLDivElement>(undefined!)
+  const elementRef = useRef<HTMLDivElement>(null)
   const element = <div ref={elementRef} />
 
   const retentionTimeRef = useRef(retentionTimeMs)
   const retentionUsed = () =>
     retentionTimeRef.current !== Infinity && retentionTimeRef.current > 0
-  const getMinMaxDataTime = () => {
-    const data = dataRef.current
+  const getSimplifyedData = () =>
+    simplifyDiagramEntryPointToMaxPoints(dataRef.current as DiagramEntryPoint[])
 
-    if (data === undefined) return undefined
-    if (typeof data === 'number') {
-      const time = getLastPoint([])?.time
-      if (time) return {min: time, max: time}
-      return undefined
-    }
-    if (!data.length) return undefined
-    return getMinAndMax(data.map((x) => x.time))
-  }
-  const getSimplifyedData = () => {
-    const data = dataRef.current as DiagramEntryPoint[]
-
-    const newData = simplifyDiagramEntryPointToMaxPoints(data)
-    if (newData.length !== data.length)
-      console.log(
-        `data simplified from ${data.length
-          .toString()
-          .padStart(6)} to ${newData.length.toString().padStart(6)}`
-      )
-
-    return newData
-  }
-
-  const getPlotOptions = () => {
+  const getPlotOptions = useCallback(() => {
     const data = dataRef.current
     const now = Date.now()
 
-    const dataTimeMinMax = getMinMaxDataTime()
+    const dataTimeMinMax = getMinMaxDataTime(data, getLastPoint)
     return {
       ...g2PlotDefaults,
       ...(retentionUsed() ? {padding: [22, 28]} : {}),
@@ -328,14 +320,12 @@ export const useG2Plot = (
                 retentionUsed()
                   ? linearScale(
                       now - retentionTimeRef.current,
-                      dataTimeMinMax!.max,
+                      dataTimeMinMax.max,
                       8
                     ).map(Math.round)
-                  : linearScale(
-                      dataTimeMinMax!.min,
-                      dataTimeMinMax!.max,
-                      8
-                    ).map(Math.round),
+                  : linearScale(dataTimeMinMax.min, dataTimeMinMax.max, 8).map(
+                      Math.round
+                    ),
             }
           : {}),
         ...(retentionUsed()
@@ -351,7 +341,7 @@ export const useG2Plot = (
       ...(typeof data === 'number' ? {percent: data} : {}),
       ...(Array.isArray(data) ? {data: getSimplifyedData()} : {}),
     }
-  }
+  }, [opts, getLastPoint])
 
   useEffect(() => {
     retentionTimeRef.current = retentionTimeMs
@@ -359,28 +349,33 @@ export const useG2Plot = (
 
   useEffect(() => {
     if (!elementRef.current) return
+    plotRef.current?.destroy()
     plotRef.current = new ctor(elementRef.current, getPlotOptions())
-    plotRef.current!.render()
-  }, [])
+    plotRef.current.render()
+  }, [ctor, getPlotOptions])
 
-  const redraw = useRafOnce(() => {
-    plotRef.current?.update?.(getPlotOptions())
-  }, [opts])
+  const redraw = useRafOnce(
+    useCallback(() => {
+      plotRef.current?.update?.(getPlotOptions())
+    }, [getPlotOptions])
+  )
   useEffect(redraw, [redraw])
 
-  const invalidate = useRafOnce(() => {
-    // todo: don't redraw when window not visible
-    const data = dataRef.current
+  const invalidate = useRafOnce(
+    useRef(() => {
+      // todo: don't redraw when window not visible
+      const data = dataRef.current
 
-    if (data === undefined) {
-      if (ctor === Gauge) {
-        plotRef.current?.changeData(0)
-      } else {
-        plotRef.current?.changeData?.([])
-      }
-    } else if (typeof data === 'number') plotRef.current?.changeData?.(data)
-    else plotRef.current?.changeData?.(getSimplifyedData())
-  })
+      if (data === undefined) {
+        if (ctor === Gauge) {
+          plotRef.current?.changeData(0)
+        } else {
+          plotRef.current?.changeData?.([])
+        }
+      } else if (typeof data === 'number') plotRef.current?.changeData?.(data)
+      else plotRef.current?.changeData?.(getSimplifyedData())
+    }).current
+  )
 
   const updateMask = () => {
     if (!Array.isArray(dataRef.current)) return false
@@ -409,7 +404,7 @@ export const useG2Plot = (
     if (Array.isArray(dataRef.current))
       applyRetention(dataRef.current, retentionTimeRef.current)
 
-    const maskChanged = updateMask()
+    updateMask()
 
     if (ctor === Gauge) invalidate()
     else redraw()
@@ -427,7 +422,7 @@ type G2PlotParams = {
   retentionTimeMs?: number
 }
 
-export const G2Plot = (params: G2PlotParams) => {
+export const G2Plot: React.FC<G2PlotParams> = (params) => {
   const {element, update} = useG2Plot(
     params.type,
     params.options,
@@ -435,7 +430,7 @@ export const G2Plot = (params: G2PlotParams) => {
   )
   useEffect(() => {
     params.onUpdaterChange(update)
-  }, [update])
+  }, [params, update])
 
   return <>{element}</>
 }
@@ -445,7 +440,7 @@ export const G2Plot = (params: G2PlotParams) => {
  * function can exceed callback for big arrays.
  * Use this method instead
  */
-export const pushBigArray = <T,>(self: T[], arr2: T[]) => {
+export const pushBigArray = <T,>(self: T[], arr2: T[]): void => {
   const arr2len = arr2.length
   const newLen = self.length + arr2len
   self.length = newLen

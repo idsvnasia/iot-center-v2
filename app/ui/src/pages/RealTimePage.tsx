@@ -192,7 +192,7 @@ const linePlotOptions: Record<
   string,
   Omit<LineOptions, 'data'>
 > = Object.fromEntries(
-  Object.entries(measurementsDefinitions).map(([measurement, {}]) => [
+  Object.keys(measurementsDefinitions).map((measurement) => [
     measurement,
     {
       height: 200,
@@ -267,7 +267,7 @@ const giraffeTableToDiagramEntryPoints = (
 
   for (let j = tags.length; j--; ) {
     const key = tags[j]
-    const valueCol = table.getColumn(key, 'number')!
+    const valueCol = table.getColumn(key, 'number') as number[]
     for (let i = length; i--; ) {
       const value = valueCol?.[i]
       const time = timeCol?.[i]
@@ -377,7 +377,7 @@ const RealTimePage: FunctionComponent<
     )
   }, [deviceId, isRealtime])
 
-  const updateData = (data: DiagramEntryPoint[] | undefined) => {
+  const updateData = useRef((data: DiagramEntryPoint[] | undefined) => {
     if (data === undefined) return
 
     const updatedFields: string[] = []
@@ -397,7 +397,7 @@ const RealTimePage: FunctionComponent<
     }
 
     updateReceivedDataFields(updatedFields)
-  }
+  }).current
 
   const updatePoints = (points: Point[]) => {
     const newData: DiagramEntryPoint[] = []
@@ -417,18 +417,18 @@ const RealTimePage: FunctionComponent<
 
   useRealtimeData(subscriptions, useRef(updatePoints).current)
 
-  const clearData = () => {
+  const clearData = useRef(() => {
     clearReceivedDataFields()
     for (const measurement of fields) {
       updatersGaugeRef.current[measurement]?.(0)
       updatersLineRef.current[measurement]?.(undefined)
     }
-  }
+  }).current
 
   useEffect(() => {
     if (isRealtime) clearData()
-  }, [isRealtime])
-  useEffect(clearData, [deviceId])
+  }, [isRealtime, clearData])
+  useEffect(clearData, [deviceId, clearData])
 
   useEffect(() => {
     clearData()
@@ -436,7 +436,7 @@ const RealTimePage: FunctionComponent<
     setTimeout(() => {
       updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fields))
     }, 100)
-  }, [measurementsTable])
+  }, [measurementsTable, updateData, clearData])
 
   // #endregion realtime
 
@@ -465,7 +465,7 @@ const RealTimePage: FunctionComponent<
 
     // fetch data only if not in realtime mode
     if (!isRealtime) fetchData()
-  }, [dataStamp, deviceId, timeStart])
+  }, [dataStamp, deviceId, timeStart, isRealtime])
 
   useEffect(() => {
     const fetchDevices = async () => {
@@ -568,7 +568,7 @@ const RealTimePage: FunctionComponent<
       </>
     )
   })()
-  // TODO: add realtime button to device settings
+
   const pageControls = (
     <>
       <Tooltip title="Choose device" placement="left">

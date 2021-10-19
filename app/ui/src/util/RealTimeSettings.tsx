@@ -1,4 +1,4 @@
-import {Card, Col, Row, Form, Input, Switch, Button} from 'antd'
+import {Card, Col, Row, Form, Input, Switch} from 'antd'
 import React, {FunctionComponent, useEffect, useState} from 'react'
 
 type MqttSettings = {

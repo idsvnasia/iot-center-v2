@@ -26,8 +26,7 @@ import {
   IconVirtualDevice,
 } from './styles/icons'
 import RealTimePage from './pages/RealTimePage'
-import {PlayCircleOutlined, SettingOutlined} from '@ant-design/icons'
-import NoConfigurationPage from './pages/NoConfigurationPage'
+import {PlayCircleOutlined} from '@ant-design/icons'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
@@ -77,7 +76,7 @@ const useHelpCollapsed = (): [boolean, (v: boolean) => void] => {
   return [helpCollapsed, changeHelpCollapsed]
 }
 
-const useFetchBoolean = (address: string, deps: any[] = []) => {
+const useFetchBoolean = (address: string) => {
   const [boolean, setBoolean] = useState<boolean | undefined>(undefined)
 
   useEffect(() => {
@@ -92,7 +91,7 @@ const useFetchBoolean = (address: string, deps: any[] = []) => {
     }
 
     fetchMqttEnabled()
-  }, deps)
+  }, [address])
 
   return boolean
 }

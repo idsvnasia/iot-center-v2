@@ -1,3 +1,4 @@
+/* eslint-disable */
 // copy from influxdata/giraffe
 const sqDist = (x0: number, y0: number, x1: number, y1: number) => {
   return (y1 - y0) ** 2 + (x1 - x0) ** 2
