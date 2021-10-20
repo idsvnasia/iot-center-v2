@@ -22,6 +22,12 @@ import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {colorLink, colorPrimary} from '../styles/colors'
 
+/*
+ ********************************************
+ * This page is adaptation of DashboardPage *
+ ********************************************
+ */
+
 interface DeviceConfig {
   influx_url: string
   influx_org: string
@@ -141,10 +147,7 @@ const gaugesPlotOptions: Record<
         axis: {
           position: 'bottom',
           label: {
-            formatter: (v) =>
-              max < 1000
-                ? (+v * (max - min) + min).toFixed(0)
-                : ((+v * (max - min) + min) / 1000).toFixed(0) + 'K',
+            formatter: (v) => (+v * (max - min) + min).toFixed(0),
             offset: -30,
             style: {
               fontSize: 12,
@@ -207,14 +210,16 @@ const linePlotOptions: Record<
 
 // #region Realtime
 
-type Point = {
+/** Data returned from websocket in line-protocol-like shape */
+type RealtimePoint = {
   measurement: string
   tagPairs: string[]
   fields: Record<string, number | boolean | string>
   timestamp: string
 }
-type Subscription = {
+type RealtimeSubscription = {
   measurement: string
+  /** all tags are in format 'tagName=tagValue'. Point is sent to client when matches all tags. */
   tags: string[]
 }
 
@@ -225,24 +230,28 @@ const host =
 const wsAddress = `ws://${host}/mqtt`
 
 const milisTimeLength = Date.now().toString().length
-
-const pointTimeToMillis = (p: Point): Point => ({
+/** Transform timestamps to millis for point. (Points can have different precission) */
+const pointTimeToMillis = (p: RealtimePoint): RealtimePoint => ({
   ...p,
   timestamp: p.timestamp
     .substr(0, milisTimeLength)
     .padEnd(milisTimeLength, '0'),
 })
 
+/**
+ * When subscriptions present creates conection
+ * to servers broker.js via websocket and subscribes for data.
+ */
 const useRealtimeData = (
-  subscriptions: Subscription[],
-  onReceivePoints: (pts: Point[]) => void
+  subscriptions: RealtimeSubscription[],
+  onReceivePoints: (pts: RealtimePoint[]) => void
 ) => {
   const wsInit = useCallback<(ws: WebSocket) => void>(
     (ws) => {
       ws.onopen = () => ws.send('subscribe:' + JSON.stringify(subscriptions))
       ws.onmessage = (response) =>
         onReceivePoints(
-          (JSON.parse(response.data) as Point[]).map(pointTimeToMillis)
+          (JSON.parse(response.data) as RealtimePoint[]).map(pointTimeToMillis)
         )
     },
     [subscriptions, onReceivePoints]
@@ -250,11 +259,30 @@ const useRealtimeData = (
   useWebSocket(wsInit, wsAddress, !!subscriptions.length)
 }
 
+// transformations for both InfluxDB and Realtime sources so we can use them same way
+
+/** transformation for realtime data returned by websocket */
+const realtimePointToDiagrameEntryPoint = (points: RealtimePoint[]) => {
+  const newData: DiagramEntryPoint[] = []
+
+  for (const p of points) {
+    const fields = p.fields
+    const time = Math.floor(+p.timestamp)
+
+    for (const key in fields) {
+      const value = fields[key] as number
+      newData.push({key, time, value})
+    }
+  }
+
+  return newData
+}
+
 /** transformation for pivoted giraffe table */
 const giraffeTableToDiagramEntryPoints = (
   table: GiraffeTable | undefined,
   tags: string[]
-) => {
+): DiagramEntryPoint[] | undefined => {
   if (!table) return
   const length = table.length
   const timeCol =
@@ -284,6 +312,10 @@ const giraffeTableToDiagramEntryPoints = (
 
 // #endregion Realtime
 
+/**
+ * definitions for time select. (Live options)
+ * realtime options contains retention to be used in graphs
+ */
 const timeOptionsRealtime: {
   label: string
   value: string
@@ -294,6 +326,9 @@ const timeOptionsRealtime: {
   {label: 'Live 1m', value: '-1m', realtimeRetention: 60_000},
 ]
 
+/**
+ * definitions for time select. (Past options)
+ */
 const timeOptions: {label: string; value: string}[] = [
   {label: 'Past 5m', value: '-5m'},
   {label: 'Past 15m', value: '-15m'},
@@ -317,9 +352,8 @@ interface Props {
 const RealTimePage: FunctionComponent<
   RouteComponentProps<PropsRoute> & Props
 > = ({match, history, helpCollapsed, mqttEnabled}) => {
-  const influxEnabled = true as boolean
   const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
-  // loading is defaultly false
+  // loading is defaultly false because we don't load data when page load.
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<Message | undefined>()
   const [deviceData, setDeviceData] = useState<DeviceData | undefined>()
@@ -327,9 +361,14 @@ const RealTimePage: FunctionComponent<
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
   const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
 
+  // resetXDomain removed, doesn't make sense to zoom graph in realtime
+
   const isVirtualDevice = deviceId === VIRTUAL_DEVICE
   const measurementsTable = deviceData?.measurementsTable
 
+  // unlike before, data don't have to be in react state.
+  // we have to create some way to track what data we have
+  // received so we can hide other graphs
   const [receivedDataFields, setReceivedDataFields] = useState<string[]>([])
   const noDataFields = fields.filter(
     (x) => !receivedDataFields.some((y) => y === x)
@@ -350,19 +389,22 @@ const RealTimePage: FunctionComponent<
 
   // #region realtime
 
+  // Default time selected to Past when mqtt not configured
   useEffect(() => {
     if (mqttEnabled === false) {
       setTimeStart(timeOptions[0].value)
     }
   }, [mqttEnabled])
 
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [subscriptions, setSubscriptions] = useState<RealtimeSubscription[]>([])
+  // object which contains functions that updates graphs outside of react state
   type Updaters<T> = Record<string, G2PlotUpdater<T>>
   const updatersGaugeRef = useRef<Updaters<Gauge>>({})
   const updatersLineRef = useRef<Updaters<Line>>({})
 
   const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
 
+  /** Graph is showed with fixed time range if set */
   const retentionTime = isRealtime
     ? timeOptionsRealtime[
         timeOptionsRealtime.findIndex((x) => x.value === timeStart)
@@ -377,6 +419,7 @@ const RealTimePage: FunctionComponent<
     )
   }, [deviceId, isRealtime])
 
+  /** Propagate data to desired graphs and rerender them */
   const updateData = useRef((data: DiagramEntryPoint[] | undefined) => {
     if (data === undefined) return
 
@@ -399,24 +442,14 @@ const RealTimePage: FunctionComponent<
     updateReceivedDataFields(updatedFields)
   }).current
 
-  const updatePoints = (points: Point[]) => {
-    const newData: DiagramEntryPoint[] = []
+  useRealtimeData(
+    subscriptions,
+    useRef((points: RealtimePoint[]) => {
+      updateData(realtimePointToDiagrameEntryPoint(points))
+    }).current
+  )
 
-    for (const p of points) {
-      const fields = p.fields
-      const time = Math.floor(+p.timestamp)
-
-      for (const key in fields) {
-        const value = fields[key] as number
-        newData.push({key, time, value})
-      }
-    }
-
-    updateData(newData)
-  }
-
-  useRealtimeData(subscriptions, useRef(updatePoints).current)
-
+  /** Clear data and resets received data fields state */
   const clearData = useRef(() => {
     clearReceivedDataFields()
     for (const measurement of fields) {
@@ -430,6 +463,7 @@ const RealTimePage: FunctionComponent<
   }, [isRealtime, clearData])
   useEffect(clearData, [deviceId, clearData])
 
+  // On measurementsTable is changed, we render it in graphs
   useEffect(() => {
     clearData()
     // TODO: somehow clearing data after update, need to be fixed
@@ -442,6 +476,9 @@ const RealTimePage: FunctionComponent<
 
   // fetch device configuration and data
   useEffect(() => {
+    // we don't use fetchDeviceLastValues. 
+    //   Gauge graphs will handle last walue selection for us.
+
     const fetchData = async () => {
       setLoading(true)
       try {
@@ -489,6 +526,13 @@ const RealTimePage: FunctionComponent<
     fetchDevices()
   }, [])
 
+  /*
+    Rendering graphs with minilibrary written in util/realtimeUtils.tsx
+    This time, data isn't pass by state but by calling callback (got by onUpdaterChange) 
+    which allows us to update graph more frequently with better performance.
+    All graphs has to be rendered whole time because we need to have updater function from it. (so we use display 'none' instead of conditional rendering)
+  */ 
+
   const renderGauge = (column: string) => (
     <G2Plot
       type={Gauge}
@@ -499,7 +543,7 @@ const RealTimePage: FunctionComponent<
     />
   )
 
-  // gaugeLastTimeMessage not supported in this demo helper realtimeUtils mini-library
+  // gaugeLastTimeMessage not implemented
 
   const gauges = (
     <Row gutter={[22, 22]}>
@@ -617,11 +661,7 @@ const RealTimePage: FunctionComponent<
             </Select.Option>
           ))}
           {timeOptions.map(({label, value}) => (
-            <Select.Option
-              disabled={influxEnabled === false}
-              key={value}
-              value={value}
-            >
+            <Select.Option key={value} value={value}>
               {label}
             </Select.Option>
           ))}
