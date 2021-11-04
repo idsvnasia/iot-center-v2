@@ -80,17 +80,21 @@ const useFetchBoolean = (address: string) => {
   const [boolean, setBoolean] = useState<boolean | undefined>(undefined)
 
   useEffect(() => {
-    const fetchMqttEnabled = async () => {
+    const fetchBoolean = async () => {
       const response = await fetch(address)
       if (response.status >= 300) {
         const text = await response.text()
         throw new Error(`${response.status} ${text}`)
       }
       const data = await response.json()
-      setBoolean(data)
+      if (typeof data === 'boolean') setBoolean(data)
+      else
+        throw new Error(
+          `invalid data type received from ${address}. Expected boolean received ${typeof data}`
+        )
     }
 
-    fetchMqttEnabled()
+    fetchBoolean()
   }, [address])
 
   return boolean
