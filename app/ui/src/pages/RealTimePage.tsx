@@ -476,8 +476,8 @@ const RealTimePage: FunctionComponent<
 
   // fetch device configuration and data
   useEffect(() => {
-    // we don't use fetchDeviceLastValues. 
-    //   Gauge graphs will handle last walue selection for us.
+    // we don't use fetchDeviceLastValues
+    //   Gauge graphs will handle last walue selection for us
 
     const fetchData = async () => {
       setLoading(true)
@@ -531,8 +531,7 @@ const RealTimePage: FunctionComponent<
     This time, data isn't pass by state but by calling callback (got by onUpdaterChange) 
     which allows us to update graph more frequently with better performance.
     All graphs has to be rendered whole time because we need to have updater function from it. (so we use display 'none' instead of conditional rendering)
-  */ 
-
+  */
   const renderGauge = (column: string) => (
     <G2Plot
       type={Gauge}
