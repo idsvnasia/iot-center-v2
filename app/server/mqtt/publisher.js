@@ -5,6 +5,7 @@ const {generateValue} = require('./util/generateValue')
 const {parentPort} = require('worker_threads')
 
 let sendDataHandle = -1
+const GPX_SPEED_MODIFIER = 100
 
 const measurements = [
   {name: 'Temperature', period: 30, min: 0, max: 40},
@@ -13,6 +14,24 @@ const measurements = [
   {name: 'CO2', period: 1, min: 400, max: 3000},
   {name: 'TVOC', period: 1, min: 250, max: 2000},
 ]
+
+let gpxData
+require('fs').readFile('./apis/gpxData.json', (_err, data) => {
+  gpxData = JSON.parse(data.toString('utf-8'))
+})
+
+const MONTH_MILLIS = 30 * 24 * 60 * 60 * 1000
+
+const generateGPXData = (data, time) => {
+  const len = data.length
+  const index =
+    Math.floor(
+      ((time % MONTH_MILLIS) / MONTH_MILLIS) * GPX_SPEED_MODIFIER * len
+    ) % len
+  const entry = data[index]
+
+  return entry
+}
 
 parentPort.on('message', async (data) => {
   if (!(MQTT_URL && MQTT_TOPIC))
@@ -33,6 +52,11 @@ parentPort.on('message', async (data) => {
     measurements.forEach(({name, max, min, period}) => {
       point.floatField(name, generateValue(period, min, max, now))
     })
+    if (gpxData) {
+      const [lat, lon] = generateGPXData(gpxData, Date.now())
+      point.floatField('lat', lat)
+      point.floatField('lon', lon)
+    }
     point
       .tag('TemperatureSensor', 'virtual_TemperatureSensor')
       .tag('HumiditySensor', 'virtual_HumiditySensor')
