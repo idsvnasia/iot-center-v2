@@ -494,6 +494,10 @@ const RealTimePage: FunctionComponent<
 
     mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
 
+    const lat = data.find((x) => x.key === 'lat')?.value
+    const lon = data.find((x) => x.key === 'lon')?.value
+    if (lat && lon) updateMapPoint([lat, lon])
+
     for (const field of fields) {
       const lineData = data.filter(({key}) => key === field)
 
