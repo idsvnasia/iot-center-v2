@@ -57,7 +57,7 @@ async function setupWsBroker(client, router) {
         }
       })
     } catch (e) {
-      console.error('Error while processing MQTT message', e)
+      process.stderr.write('Error while processing MQTT message', e)
     }
   })
 
@@ -71,7 +71,7 @@ async function setupWsBroker(client, router) {
           )
           if (subscription) {
             if (!Array.isArray(subscription)) {
-              console.error(
+              process.stderr.write(
                 'subscription message must contain an array of all subscriptions, but:',
                 JSON.stringify(subscription)
               )
@@ -79,14 +79,14 @@ async function setupWsBroker(client, router) {
             }
             for (const s of subscription) {
               if (!s.measurement) {
-                console.error(
+                process.stderr.write(
                   'subscription ignored, missing measurement in: ',
                   JSON.stringify(s)
                 )
                 return
               }
               if (!Array.isArray(s.tags)) {
-                console.error(
+                process.stderr.write(
                   'subscription ignored, array of tags with key=value pairs expected in: ',
                   JSON.stringify(s)
                 )
@@ -96,10 +96,10 @@ async function setupWsBroker(client, router) {
           }
           ws.subscription = subscription
         } catch (e) {
-          console.error('unparseable subscribe message', payload)
+          process.stderr.write('unparseable subscribe message', payload)
         }
       } else {
-        console.error(
+        process.stderr.write(
           "unknown ws message, should start with 'subscribe:'",
           payload
         )
@@ -110,7 +110,7 @@ async function setupWsBroker(client, router) {
 // example client exchange:
 // ws =  new WebSocket("ws://" + location.host + "/mqtt/")
 // ws.send('subscribe:[{"measurement":"environment", "tags":["a=b"]}]')
-// ws.onMessage = ({data}) => console.log(data)
+// ws.onMessage = ({data}) => process.stdout.write(data)
 // // example message: [{"measurement":"environment","tagPairs":["CO2Sensor=virtual_CO2Sensor","a=b"],"fields":{"CO2":2572}, "timestamp": "1629357840000000000"}]
 // ws.send('subscribe:false') // unsubscribe
 
