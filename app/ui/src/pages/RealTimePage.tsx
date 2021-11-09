@@ -505,10 +505,7 @@ const RealTimePage: FunctionComponent<
         ])
         .filter((x) => !x.some((x) => typeof x !== 'number')) as TimePoint[]
 
-      if (points.length) updatedFields.push('Lat', 'Lon')
-
-      map.addPoints(points)
-    }
+    mapRef.current?.addPoints?.(diagramEntryPointsToMapTimePoints(data))
 
     for (const field of fields) {
       const lineData = data.filter(({key}) => key === field)
@@ -799,7 +796,7 @@ const RealTimePage: FunctionComponent<
       titleExtra={pageControls}
       message={message}
       // loading for some reason makes map disappear
-      // spin={loading}
+      spin={loading}
       forceShowScroll={true}
     >
       <div style={receivedDataFields.length ? {} : {display: 'none'}}>
