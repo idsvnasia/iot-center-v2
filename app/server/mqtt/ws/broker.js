@@ -57,13 +57,13 @@ async function setupWsBroker(client, router) {
         }
       })
     } catch (e) {
-      process.stderr.write('Error while processing MQTT message', e)
+      process.stderr.write('Error while processing MQTT message ' + e)
     }
   })
 
   router.ws('/', async function (ws) {
     ws.on('message', function (data) {
-      const payload = data.toString()
+      const payload = data.toString('utf-8')
       if (payload.startsWith('subscribe:')) {
         try {
           const subscription = JSON.parse(
@@ -72,23 +72,23 @@ async function setupWsBroker(client, router) {
           if (subscription) {
             if (!Array.isArray(subscription)) {
               process.stderr.write(
-                'subscription message must contain an array of all subscriptions, but:',
-                JSON.stringify(subscription)
+                'subscription message must contain an array of all subscriptions, but:' +
+                  JSON.stringify(subscription)
               )
               return
             }
             for (const s of subscription) {
               if (!s.measurement) {
                 process.stderr.write(
-                  'subscription ignored, missing measurement in: ',
-                  JSON.stringify(s)
+                  'subscription ignored, missing measurement in: ' +
+                    JSON.stringify(s)
                 )
                 return
               }
               if (!Array.isArray(s.tags)) {
                 process.stderr.write(
-                  'subscription ignored, array of tags with key=value pairs expected in: ',
-                  JSON.stringify(s)
+                  'subscription ignored, array of tags with key=value pairs expected in: ' +
+                    JSON.stringify(s)
                 )
                 return
               }
@@ -96,12 +96,11 @@ async function setupWsBroker(client, router) {
           }
           ws.subscription = subscription
         } catch (e) {
-          process.stderr.write('unparseable subscribe message', payload)
+          process.stderr.write('unparseable subscribe message' + payload)
         }
       } else {
         process.stderr.write(
-          "unknown ws message, should start with 'subscribe:'",
-          payload
+          "unknown ws message, should start with 'subscribe:'" + payload
         )
       }
     })
