@@ -54,8 +54,8 @@ parentPort.on('message', async (data) => {
     })
     if (gpxData) {
       const [lat, lon] = generateGPXData(gpxData, Date.now())
-      point.floatField('lat', lat)
-      point.floatField('lon', lon)
+      point.floatField('Lat', lat)
+      point.floatField('Lon', lon)
     }
     point
       .tag('TemperatureSensor', 'virtual_TemperatureSensor')
