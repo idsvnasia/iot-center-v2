@@ -83,6 +83,10 @@ Mqtt can be checked with
 ```
 cd app/server && yarn mqtt_subscriber
 ```
+Websocket broker (ui side connection) can be checked with
+```
+cd app/server && yarn mqtt_subscriber_broker
+```
 
 #### mqtt with influx
 

@@ -17,16 +17,18 @@
     "dev": "nodemon index.js",
     "test": "eslint .",
     "mqtt_dev": "cross-env MQTT_TOPIC=iot_center MQTT_URL=mqtt://localhost:1883 nodemon index.js",
-    "mqtt_subscriber": "cross-env MQTT_TOPIC=iot_center MQTT_URL=mqtt://localhost:1883 nodemon ./mqtt/subscriber.js"
+    "mqtt_subscriber": "cross-env MQTT_TOPIC=iot_center MQTT_URL=mqtt://localhost:1883 nodemon ./mqtt/subscriber.js",
+    "mqtt_subscriber_broker": "nodemon ./mqtt/subscriber_broker.js"
   },
   "devDependencies": {
+    "cross-env": "7.0.3",
     "eslint": "^7.8.1",
     "eslint-config-node": "^4.1.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-prettier": "^3.1.4",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.1",
-    "yaml": "^1.10.0",
-    "cross-env": "7.0.3"
+    "websocket": "^1.0.34",
+    "yaml": "^1.10.0"
   }
 }
