@@ -494,9 +494,21 @@ const RealTimePage: FunctionComponent<
 
     mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
 
-    const lat = data.find((x) => x.key === 'lat')?.value
-    const lon = data.find((x) => x.key === 'lon')?.value
-    if (lat && lon) updateMapPoint([lat, lon])
+    const map = mapRef.current
+    if (map) {
+      const lats = data.filter((x) => x.key === 'Lat')
+      const points = lats
+        .map(({value: lat, time}) => [
+          lat,
+          data.find((x) => x.key === 'Lon' && x.time === time)?.value,
+          time,
+        ])
+        .filter((x) => !x.some((x) => typeof x !== 'number')) as TimePoint[]
+
+      if (points.length) updatedFields.push('Lat', 'Lon')
+
+      map.addPoints(points)
+    }
 
     for (const field of fields) {
       const lineData = data.filter(({key}) => key === field)
@@ -786,7 +798,8 @@ const RealTimePage: FunctionComponent<
       }
       titleExtra={pageControls}
       message={message}
-      spin={loading}
+      // loading for some reason makes map disappear
+      // spin={loading}
       forceShowScroll={true}
     >
       <div style={receivedDataFields.length ? {} : {display: 'none'}}>
