@@ -23,6 +23,7 @@ import {Row, Col, Collapse, Empty, Divider} from 'antd'
 import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {colorLink, colorPrimary} from '../styles/colors'
+import { useSVGRelatimeFactory } from "../util/svg-realtime"
 
 /*
  ********************************************
@@ -507,6 +508,8 @@ const RealTimePage: FunctionComponent<
 
     mapRef.current?.addPoints?.(diagramEntryPointsToMapTimePoints(data))
 
+    updateFactory(Object.fromEntries(data.map(({key,value})=>[key,value])));
+
     for (const field of fields) {
       const lineData = data.filter(({key}) => key === field)
 
@@ -536,6 +539,8 @@ const RealTimePage: FunctionComponent<
       updatersGaugeRef.current[measurement]?.(undefined)
       updatersLineRef.current[measurement]?.(undefined)
       mapRef.current.clear()
+      clearFactory();
+      updateFactory({deviceId: deviceIdRef.current});
     }
   }).current
 
@@ -799,6 +804,10 @@ const RealTimePage: FunctionComponent<
       spin={loading}
       forceShowScroll={true}
     >
+      <Card>
+      {factoryElement}
+        </Card>
+        <div style={{height:24}} />
       <div style={receivedDataFields.length ? {} : {display: 'none'}}>
         {gauges}
         {plotDivider}
