@@ -248,7 +248,7 @@ void writeLoop() {  //Keep alive the connection
 }
 
 void _delay( unsigned long t) {
-  for (unsigned int i = 0; i < (t/1000); i++) {
+  for (unsigned int i = 0; i < (t/1000); i++) { //write measurements every second (for real-time)
     writeLoop();
     delay(1000);
   }
