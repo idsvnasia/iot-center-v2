@@ -10,8 +10,10 @@ REM   typically your email (can be changed)
 SET INFLUX_URL=
 SET INFLUX_TOKEN=
 SET INFLUX_ORG=
-
 REM SET MQTT_TOPIC=iot_center
-REM SET MQTT_URL=mqtt://localhost:1883
+REM SET MQTT_URL=mqtt://127.0.0.1:1883
+
+if [%1]==[telegraf] telegraf --debug --config telegraf.conf
+if [%1]==[telegraf] exit
 
 yarn dev
