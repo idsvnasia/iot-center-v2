@@ -20,9 +20,18 @@ export INFLUX_ORG=
 # export MQTT_TOPIC=iot_center
 # export MQTT_URL=mqtt://127.0.0.1:1883
 
-if [ "$1" = "telegraf" ]; then
+if [ "$1" = "mqtt" ]; then
   if [ "$(uname -s)" = "Darwin" ]; then
     /usr/local/opt/mosquitto/sbin/mosquitto
+  else
+    mosquitto
+  fi
+  exit
+fi
+
+if [ "$1" = "telegraf" ]; then
+  if [ "$(uname -s)" = "Darwin" ]; then
+    telegraf --debug --config telegraf.conf
   else
     mosquitto
   fi
