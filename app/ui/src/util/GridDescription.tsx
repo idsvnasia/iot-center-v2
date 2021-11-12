@@ -41,8 +41,8 @@ export const GridDescription: React.FC<GridDescriptionProps> = (props) => (
         filter: 'drop-shadow(0px 0px 25px rgba(0, 0, 0, 0.15))',
       }}
     >
-      {props.descriptions.map(({label, value}) => (
-        <Col {...columnsToSpan(props.column)}>
+      {props.descriptions.map(({label, value}, i) => (
+        <Col {...columnsToSpan(props.column)} key={i}>
           <Row
             style={{
               whiteSpace: 'nowrap',

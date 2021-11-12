@@ -25,6 +25,8 @@ import {
   IconHome,
   IconVirtualDevice,
 } from './styles/icons'
+import RealTimePage from './pages/RealTimePage'
+import {PlayCircleOutlined} from '@ant-design/icons'
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
@@ -52,6 +54,10 @@ const PAGE_HELP: Array<{
     file: '/help/DashboardPage.md',
     matcher: '/dashboard/:device',
   },
+  {
+    file: '/help/RealtimePage.md',
+    matcher: '/realtime/:device',
+  },
 ]
 
 const getPageHelp = (url: string) =>
@@ -70,9 +76,34 @@ const useHelpCollapsed = (): [boolean, (v: boolean) => void] => {
   return [helpCollapsed, changeHelpCollapsed]
 }
 
+const useFetchBoolean = (address: string) => {
+  const [boolean, setBoolean] = useState<boolean | undefined>(undefined)
+
+  useEffect(() => {
+    const fetchBoolean = async () => {
+      const response = await fetch(address)
+      if (response.status >= 300) {
+        const text = await response.text()
+        throw new Error(`${response.status} ${text}`)
+      }
+      const data = await response.json()
+      if (typeof data === 'boolean') setBoolean(data)
+      else
+        throw new Error(
+          `invalid data type received from ${address}. Expected boolean received ${typeof data}`
+        )
+    }
+
+    fetchBoolean()
+  }, [address])
+
+  return boolean
+}
+
 const App: FunctionComponent<RouteComponentProps> = (props) => {
   const [helpCollapsed, setHelpCollapsed] = useHelpCollapsed()
   const [helpText, setHelpText] = useState('')
+  const mqttEnabled = useFetchBoolean('/mqtt/enabled')
 
   const help = getPageHelp(props.location.pathname)
 
@@ -103,6 +134,9 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
               ...(matchPath(props.location.pathname, '/dashboard/:device')
                 ? ['/dashboard/:device']
                 : []),
+              ...(matchPath(props.location.pathname, '/realtime/:device')
+                ? ['/realtime/:device']
+                : []),
             ]}
             mode="inline"
           >
@@ -121,6 +155,18 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             <Menu.Item key="/dashboard/:device" icon={<IconDashboard />}>
               <NavLink to="/dashboard">Dashboard</NavLink>
             </Menu.Item>
+            <Menu.Item
+              style={mqttEnabled === true ? {} : {color: 'gray'}}
+              key="/realtime/:device"
+              icon={<PlayCircleOutlined />}
+            >
+              <NavLink
+                style={mqttEnabled === true ? {} : {color: 'gray'}}
+                to="/realtime"
+              >
+                Realtime
+              </NavLink>
+            </Menu.Item>
           </Menu>
         </Sider>
         <Switch>
@@ -137,7 +183,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             exact
             path="/devices/:deviceId"
             render={(props) => (
-              <DevicePage {...props} helpCollapsed={helpCollapsed} />
+              <DevicePage {...props} {...{helpCollapsed, mqttEnabled}} />
             )}
           />
           <Redirect
@@ -150,6 +196,14 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             path="/dashboard/:deviceId"
             render={(props) => (
               <DashboardPage {...props} helpCollapsed={helpCollapsed} />
+            )}
+          />
+          <Redirect exact from="/realtime" to={`/realtime/${VIRTUAL_DEVICE}`} />
+          <Route
+            exact
+            path="/realtime/:deviceId"
+            render={(props) => (
+              <RealTimePage {...props} {...{helpCollapsed, mqttEnabled}} />
             )}
           />
           <Route path="*" component={NotFoundPage} />

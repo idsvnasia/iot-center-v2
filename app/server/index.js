@@ -9,6 +9,7 @@ const mqtt = require('./mqtt')
 const onboardInfluxDB = require('./influxdb/onboarding')
 const {logEnvironment, INFLUX_URL} = require('./env')
 const {monitorResponseTime, startProcessMonitoring} = require('./monitor')
+const {addWebSockets} = require('./ws')
 
 // terminate on DTRL+C or CTRL+D
 process.on('SIGINT', () => process.exit())
@@ -16,6 +17,7 @@ process.on('SIGTERM', () => process.exit())
 
 async function startApplication() {
   const app = express()
+  addWebSockets(app)
 
   // monitor application response time
   monitorResponseTime(app)

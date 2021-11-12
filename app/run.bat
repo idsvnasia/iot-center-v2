@@ -7,6 +7,9 @@ SET INFLUX_TOKEN=<generated token in the InfluxDB UI>
 REM SET INFLUX_ORG=iotCenter@influxdata.com
 SET INFLUX_ORG=<your email>
 
+REM SET MQTT_TOPIC=iot_center
+REM SET MQTT_URL=mqtt://localhost:1883
+
 yarn install
 yarn build
 yarn start

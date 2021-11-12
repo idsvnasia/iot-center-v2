@@ -362,7 +362,6 @@ const DashboardPage: FunctionComponent<
     </>
   ) : undefined
 
-
   const renderPlot = (
     lineDefinition: Partial<LineLayerConfig> | undefined,
     table: GiraffeTable,

@@ -67,6 +67,72 @@ yarn install
 yarn dev
 ```
 
+### Realtime demo
+
+#### Only mqtt (locally)
+
+each line in separate terminal, no environment variables has to be set:
+```
+cd app/server/mqtt/docker-mosquitto && ./run_mqtt_server.sh
+cd app/server && yarn mqtt_dev
+cd app/ui && yarn start
+```
+Application is running at `http://localhost:3000/realtime`
+
+Mqtt can be checked with
+```
+cd app/server && yarn mqtt_subscriber
+```
+Websocket broker (ui side connection) can be checked with
+```
+cd app/server && yarn mqtt_subscriber_broker
+```
+
+#### mqtt with influx
+
+##### setup
+Register account in InfluxDB Cloud 2 if not exists or install local InfluxDB 2 instance
+
+Edit `app/dev.sh` and set environment values `INFLUX_TOKEN`, `INFLUX_URL`, `INFLUX_ORG` and uncomment `MQTT_TOPIC`, `MQTT_URL` *(MQTT_URL can't be localhost or 127.0.0.1 to run with real devices)*
+
+Install telegraf and copy example configuration:
+```
+cd app/server/mqtt
+cp -n telegraf.example.conf telegraf.conf
+```
+Edit `telegraf.conf` and set `urls`, `token`, `organization` under `[[outputs.influxdb_v2]]` and `servers`, `iot_center` under `[[inputs.mqtt_consumer]]` *(to be same as in app/dev.sh)*:
+```
+nano telegraf.conf
+```
+
+##### Run everything
+
+Have MQTT Running public or run locally with command: 
+```
+cd app/server/mqtt/docker-mosquitto && ./run_mqtt_server.sh
+```
+
+Start telgraf: 
+```
+cd app/server/mqtt && telegraf --config telegraf.conf
+```
+
+Start app:
+```
+cd app && ./dev.sh
+```
+
+Mqtt can be checked with:
+```
+cd app/server && yarn mqtt_subscriber
+```
+
+Open browser at `http://localhost:3000/realtime`:
+```
+xdg-open http://localhost:3000/realtime
+```
+
+
 ### Environment Installation
 
 * Install latest node.js

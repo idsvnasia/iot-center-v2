@@ -6,10 +6,14 @@ if (MQTT_URL && MQTT_TOPIC) {
     const client = await createClient()
     await client.subscribe(MQTT_TOPIC)
     console.log('Subscribed to', MQTT_TOPIC, 'at', MQTT_URL)
-    client.on('message', function (_topic, buffer) {
+    await client.subscribe('test')
+    console.log('Subscribed to', 'test', 'at', MQTT_URL)
+    client.on('message', function (topic, buffer) {
       const message = buffer.toString()
-      console.log(`${message.toString().split('\n').length} lines received`)
-      console.log(message.toString())
+      console.log(
+        `${message.toString().split('\n').length} lines received at ${topic}`
+      )
+      console.log(message)
     })
     async function onShutdown() {
       try {
