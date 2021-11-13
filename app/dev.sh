@@ -24,17 +24,13 @@ if [ "$1" = "mqtt" ]; then
   if [ "$(uname -s)" = "Darwin" ]; then
     /usr/local/opt/mosquitto/sbin/mosquitto
   else
-    mosquitto
+    mosquitto -v
   fi
   exit
 fi
 
 if [ "$1" = "telegraf" ]; then
-  if [ "$(uname -s)" = "Darwin" ]; then
-    telegraf --debug --config telegraf.conf
-  else
-    mosquitto
-  fi
+  telegraf --debug --config telegraf.conf
   exit
 fi
 
