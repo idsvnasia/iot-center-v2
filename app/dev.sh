@@ -14,8 +14,8 @@
 export INFLUX_URL=
 export INFLUX_TOKEN=
 export INFLUX_ORG=
-# export MQTT_TOPIC=iot_center
 # export MQTT_URL=mqtt://127.0.0.1:1883
+# export MQTT_TOPIC=iot_center
 
 if [ "$1" = "mqtt" ]; then
   if [ "$(uname -s)" = "Darwin" ]; then
@@ -26,10 +26,15 @@ if [ "$1" = "mqtt" ]; then
   exit
 fi
 
+if [ "$1" = "consumer" ]; then
+  node server/mqtt/subscriber.js
+  exit
+fi
+
 if [ "$1" = "telegraf" ]; then
   telegraf --debug --config telegraf.conf
   exit
 fi
 
-export NODE_OPTIONS=--openssl-legacy-provider
+#export NODE_OPTIONS=--openssl-legacy-provider
 yarn dev
