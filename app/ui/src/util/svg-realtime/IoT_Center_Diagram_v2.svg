@@ -152,11 +152,11 @@
 <rect class="st5" x="301.25" y="417.8" width="7.4" height="6.65"/>
 <polygon class="st5" points="321.6 378.69 393.67 378.69 393.67 393.03 393.67 407.37 321.6 407.37 311.82 417.8 267.64 417.8 267.64 393.03 267.64 368.25 311.82 368.25"/>
 <text class="st19 st3 st6" transform="matrix(0 -1 1 0 417.96 406.83)">CO2 {CO2} ppm</text>
-<text class="st19 st3 st6" transform="translate(431.39 72.115)">TVOC {TVOC:.2f} ppb</text>
-<text transform="translate(674.15 376.83)"><tspan class="st19 st3 st6" x="0" y="0">Temperature</tspan><tspan class="st19 st3 st6" x="-19.75" y="16.8">{Temperature} °C</tspan></text>
+<text class="st19 st3 st6" transform="translate(431.39 72.115)">TVOC {TVOC} ppb</text>
+<text transform="translate(674.15 376.83)"><tspan class="st19 st3 st6" x="0" y="0">Temperature</tspan><tspan class="st19 st3 st6" x="20" y="16.8">{Temperature} °C</tspan></text>
 <text transform="translate(866.76 318.79)"><tspan class="st19 st3 st6" x="0" y="0">Lat {Lat}</tspan><tspan class="st19 st3 st6" x="-3.32" y="16.8">Lon {Lon}</tspan></text>
-<text transform="translate(622.2 123.99)"><tspan class="st19 st3 st6" x="0" y="0">Pressure</tspan><tspan class="st19 st3 st6" x="-24.99" y="16.8">{Pressure} hPa</tspan></text>
-<text transform="translate(892.46 102.99)"><tspan class="st19 st3 st6" x="0" y="0">Hum</tspan><tspan class="st19 st3 st6" x="-31.85" y="16.799999">{Humidity}%</tspan></text>
+<text transform="translate(622.2 123.99)"><tspan class="st19 st3 st6" x="0" y="0">Pressure</tspan><tspan class="st19 st3 st6" x="-5" y="16.8">{Pressure} hPa</tspan></text>
+<text transform="translate(892.46 102.99)"><tspan class="st19 st3 st6" x="0" y="0">Hum</tspan><tspan class="st19 st3 st6" x="0" y="16.8">{Humidity}%</tspan></text>
 <text class="st3 st6" transform="translate(631.41 101.35)">Filter</text>
 <text class="st3 st6" transform="translate(891.09 80.348)">Filter</text>
 <text class="st3 st6" transform="translate(918.9 266.08)">Granulator</text>

@@ -11,6 +11,7 @@ import {ReactComponent as SvgFactory} from './IoT_Center_Diagram_v2.svg'
     - remove all naspaced attributes (containing : e.g. xmlns:dc) of svg element 
 */
 
+// TODO: make this universal - pass svg as prop
 export const useSVGRelatimeFactory = () => {
   const formatableElementsRef = useRef<{el: Element; formatString: string}[]>(
     []

@@ -8,6 +8,7 @@ import {
   DiagramEntryPoint,
   G2Plot,
   G2PlotUpdater,
+  getDiagramEntyPointLatestValues,
   TimePoint,
   useMap,
   useWebSocket,
@@ -23,7 +24,7 @@ import {Row, Col, Collapse, Empty, Divider} from 'antd'
 import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {colorLink, colorPrimary} from '../styles/colors'
-import { useSVGRelatimeFactory } from "../util/svg-realtime"
+import {useSVGRelatimeFactory} from '../util/svg-realtime'
 
 /*
  ********************************************
@@ -508,7 +509,10 @@ const RealTimePage: FunctionComponent<
 
     mapRef.current?.addPoints?.(diagramEntryPointsToMapTimePoints(data))
 
-    updateFactory(Object.fromEntries(data.map(({key,value})=>[key,value])));
+    const latest = getDiagramEntyPointLatestValues(data)
+    updateFactory(
+      Object.fromEntries(latest.map(({key, value}) => [key, value]))
+    )
 
     for (const field of fields) {
       const lineData = data.filter(({key}) => key === field)
@@ -804,10 +808,8 @@ const RealTimePage: FunctionComponent<
       spin={loading}
       forceShowScroll={true}
     >
-      <Card>
-      {factoryElement}
-        </Card>
-        <div style={{height:24}} />
+      <Card>{factoryElement}</Card>
+      <div style={{height: 24}} />
       <div style={receivedDataFields.length ? {} : {display: 'none'}}>
         {gauges}
         {plotDivider}
