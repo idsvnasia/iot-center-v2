@@ -5,6 +5,15 @@ import * as serviceWorker from './serviceWorker'
 import {BrowserRouter} from 'react-router-dom'
 // ! important to load leaflet CSS to fix tile positioning !
 import 'leaflet/dist/leaflet.css'
+// ! fixes leaflet marker
+import * as leaflet from 'leaflet'
+
+delete (leaflet.Icon.Default.prototype as any)._getIconUrl
+leaflet.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+})
 
 ReactDOM.render(
   <BrowserRouter>

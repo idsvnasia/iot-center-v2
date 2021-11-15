@@ -1,6 +1,6 @@
 const expressWs = require('express-ws')
 
-const pingInterval = 10_000
+const pingInterval = 10000
 let wss = undefined
 
 /**

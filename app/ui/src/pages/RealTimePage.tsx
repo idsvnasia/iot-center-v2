@@ -8,6 +8,8 @@ import {
   DiagramEntryPoint,
   G2Plot,
   G2PlotUpdater,
+  TimePoint,
+  useMap,
   useWebSocket,
 } from '../util/realtimeUtils'
 import {VIRTUAL_DEVICE} from '../App'
@@ -75,7 +77,7 @@ const fetchDeviceMeasurements = async (
   from(bucket: ${bucket})
     |> range(start: ${fluxDuration(timeStart)})
     |> filter(fn: (r) => r._measurement == "environment")
-    |> filter(fn: (r) => r["_field"] == "Temperature" or r["_field"] == "TVOC" or r["_field"] == "Pressure" or r["_field"] == "Humidity" or r["_field"] == "CO2")
+    |> filter(fn: (r) => r["_field"] == "Temperature" or r["_field"] == "TVOC" or r["_field"] == "Pressure" or r["_field"] == "Humidity" or r["_field"] == "CO2" or r["_field"] == "Lat" or r["_field"] == "Lon")
     |> filter(fn: (r) => r.clientId == ${id})
     |> v1.fieldsAsCols()`
   )
@@ -122,6 +124,7 @@ const measurementsDefinitions: Record<string, MeasurementDefinition> = {
   },
 }
 const fields = Object.keys(measurementsDefinitions)
+const fieldsAll = fields.concat('Lat', 'Lon')
 
 const gaugesPlotOptions: Record<
   string,
@@ -303,11 +306,56 @@ const giraffeTableToDiagramEntryPoints = (
     }
   }
 
-  for (let i = data.length; i--; )
-    if (typeof data[i].value !== 'number' || typeof data[i].time !== 'number')
-      data.splice(i, 1)
+  {
+    let length = data.length
+    for (let i = data.length; i--; ) {
+      if (data[i].value === null || data[i].time === null) {
+        length--
+        data[i] = data[length]
+      }
+    }
+    data.length = length
+    data.sort((a, b) => a.time - b.time)
+  }
 
   return data
+}
+
+/**
+ * Extracts latlon pairs and return them as TimePoint for realtime-map
+ */
+const diagramEntryPointsToMapTimePoints = (
+  data: DiagramEntryPoint[]
+): TimePoint[] => {
+  const lats = data.filter((x) => x.key === 'Lat')
+  const lons = data.filter((x) => x.key === 'Lon')
+  const pointHashMap: Map<number, TimePoint> = new Map()
+  const points: TimePoint[] = new Array(lats.length)
+
+  for (let i = lats.length; i--; ) {
+    const {time, value} = lats[i]
+    const point: TimePoint = [value, undefined as any, time]
+    pointHashMap.set(time, point)
+    points[i] = point
+  }
+
+  for (let i = lons.length; i--; ) {
+    const {time, value} = lons[i]
+    const entry = pointHashMap.get(time)
+    if (entry) entry[1] = value
+  }
+
+  let length = points.length
+  for (let i = length; i--; ) {
+    if (points[i][1] === undefined) {
+      length--
+      points[i] = points[length]
+    }
+  }
+  points.length = length
+  points.sort((a, b) => a[2] - b[2])
+
+  return points
 }
 
 // #endregion Realtime
@@ -389,6 +437,8 @@ const RealTimePage: FunctionComponent<
 
   // #region realtime
 
+  const {mapElement, mapRef} = useMap()
+
   // Default time selected to Past when mqtt not configured
   useEffect(() => {
     if (mqttEnabled === false) {
@@ -410,6 +460,7 @@ const RealTimePage: FunctionComponent<
         timeOptionsRealtime.findIndex((x) => x.value === timeStart)
       ].realtimeRetention
     : Infinity
+  mapRef.current.retentionTime = retentionTime
 
   useEffect(() => {
     setSubscriptions(
@@ -423,11 +474,14 @@ const RealTimePage: FunctionComponent<
   const updateData = useRef((data: DiagramEntryPoint[] | undefined) => {
     if (data === undefined) return
 
-    const updatedFields: string[] = []
+    updateReceivedDataFields(
+      fieldsAll.filter((field) => data.some((x) => x.key === field))
+    )
+
+    mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
 
     for (const field of fields) {
       const lineData = data.filter(({key}) => key === field)
-      if (lineData.length) updatedFields.push(field)
 
       const {min, max} = measurementsDefinitions[field]
       const gaugeData = lineData.map((x) => ({
@@ -438,8 +492,6 @@ const RealTimePage: FunctionComponent<
       updatersLineRef.current[field]?.(lineData)
       updatersGaugeRef.current[field]?.(gaugeData)
     }
-
-    updateReceivedDataFields(updatedFields)
   }).current
 
   useRealtimeData(
@@ -455,6 +507,7 @@ const RealTimePage: FunctionComponent<
     for (const measurement of fields) {
       updatersGaugeRef.current[measurement]?.(0)
       updatersLineRef.current[measurement]?.(undefined)
+      mapRef.current.clear()
     }
   }).current
 
@@ -468,7 +521,7 @@ const RealTimePage: FunctionComponent<
     clearData()
     // TODO: somehow clearing data after update, need to be fixed
     setTimeout(() => {
-      updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fields))
+      updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fieldsAll))
     }, 100)
   }, [measurementsTable, updateData, clearData])
 
@@ -568,6 +621,18 @@ const RealTimePage: FunctionComponent<
         ? `No data for: ${noDataFields.join(', ')}`
         : undefined}
     </Divider>
+  )
+
+  const geo = (
+    <div
+      style={{
+        height: '500px',
+        minWidth: '200px',
+        ...(hasData('Lat') ? {} : {display: 'none'}),
+      }}
+    >
+      {mapElement}
+    </div>
   )
 
   const renderPlot = (column: string) => (
@@ -709,6 +774,7 @@ const RealTimePage: FunctionComponent<
       <div style={receivedDataFields.length ? {} : {display: 'none'}}>
         {gauges}
         {plotDivider}
+        {geo}
         {plots}
       </div>
       {!receivedDataFields.length ? (
