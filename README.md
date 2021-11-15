@@ -38,7 +38,7 @@ open http://localhost:5000
 Docker images are available on [GitHub Packages](https://github.com/bonitoo-io/iot-center-v2/packages) with `nightly` tag:
 
 ```
-docker pull docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly
+docker pull ghcr.io/bonitoo-io/iot-center-v2/iot-center:nightly
 
 docker run \
   --name iot-center \
@@ -47,7 +47,7 @@ docker run \
   --env INFLUX_TOKEN=my-token \
   --env INFLUX_ORG=my-org \
   --publish 5000:5000 \
-  docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly
+  ghcr.io/bonitoo-io/iot-center-v2/iot-center:nightly
 ```
 
 ##### Authenticating to GitHub Packages with personal access token
