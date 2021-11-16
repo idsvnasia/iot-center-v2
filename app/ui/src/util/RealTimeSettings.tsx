@@ -1,4 +1,5 @@
-import {Card, Col, Row, Form, Input, Switch} from 'antd'
+import {Card, Col, Row, Form, Input, Button, Tooltip} from 'antd'
+import ButtonGroup from 'antd/lib/button/button-group'
 import React, {FunctionComponent, useEffect, useState} from 'react'
 
 type MqttSettings = {
@@ -13,10 +14,18 @@ const wrapperCol = Object.fromEntries(
 
 const RealTimeSettings: FunctionComponent = () => {
   const [settings, setSettings] = useState<MqttSettings>()
+  const [sendInterval, setSendInterval] = useState('100')
+  const sendIntervalValid =
+    typeof +sendInterval === 'number' &&
+    !Number.isNaN(+sendInterval) &&
+    +sendInterval >= 30
 
   const refresh = async () => {
-    const set = await (await fetch('/mqtt/settings')).json()
+    const set = (await (await fetch('/mqtt/settings')).json()) as
+      | MqttSettings
+      | undefined
     setSettings(set)
+    setSendInterval(set?.sendInterval?.toString() ?? '100')
   }
 
   useEffect(() => {
@@ -25,7 +34,7 @@ const RealTimeSettings: FunctionComponent = () => {
 
   const applyChanges = (settings: MqttSettings) => {
     setSettings(settings)
-    settings.sendInterval = Math.max(30, settings.sendInterval)
+    settings.sendInterval = sendIntervalValid ? +sendInterval : 100
     if (!settings) return
     ;(async () => {
       await fetch('/mqtt/settings', {
@@ -40,43 +49,62 @@ const RealTimeSettings: FunctionComponent = () => {
     if (settings) applyChanges({...settings, running: isRunning})
   }
 
-  const setSendInterval = (interval: number) => {
-    if (settings) applyChanges({...settings, sendInterval: interval})
-  }
-
   return (
     <>
       <Row>
-        <Col xs={24} md={12} xxl={8}>
-          <Card title="Realtime settings">
+        <Col sm={24} xl={12} xxl={8}>
+          <Card
+            title="Realtime settings"
+            extra={
+              <div style={{color: settings?.running ? 'green' : '#dec002'}}>
+                generator {settings?.running ? 'running' : 'paused'}
+              </div>
+            }
+          >
             <Form labelCol={labelCol} wrapperCol={wrapperCol}>
-              <Form.Item label={'running?'}>
-                <Switch
-                  checked={settings?.running}
-                  title={'running'}
-                  checkedChildren={'on'}
-                  unCheckedChildren={'off'}
-                  onChange={setRunning}
-                />
-              </Form.Item>
-              <Form.Item label="Send interval [ms]">
-                <Input
-                  value={settings?.sendInterval}
-                  defaultValue={100}
-                  type="number"
-                  onChange={(e) => {
-                    const num = +e.target.value
-                    setSendInterval(num)
-                  }}
-                  min={30}
-                />
-              </Form.Item>
+              <Tooltip
+                title={
+                  settings?.running ? 'Cannot be changed when running' : ''
+                }
+              >
+                <Form.Item
+                  label="Send interval [ms]"
+                  validateStatus={!sendIntervalValid ? 'error' : 'success'}
+                  help={!sendIntervalValid ? 'must be number >30' : ' '}
+                >
+                  <Input
+                    value={sendInterval}
+                    disabled={settings?.running}
+                    defaultValue={100}
+                    type="number"
+                    onChange={(e) => {
+                      setSendInterval(e.target.value)
+                    }}
+                  />
+                </Form.Item>
+              </Tooltip>
               <Col
                 style={{
                   textAlign: 'right',
                   paddingTop: 24,
                 }}
-              ></Col>
+              >
+                <ButtonGroup>
+                  <Button
+                    disabled={!settings?.running}
+                    onClick={() => setRunning(false)}
+                  >
+                    Stop
+                  </Button>
+                  <Button
+                    disabled={settings?.running}
+                    onClick={() => setRunning(true)}
+                    type="primary"
+                  >
+                    Start
+                  </Button>
+                </ButtonGroup>
+              </Col>
             </Form>
           </Card>
         </Col>

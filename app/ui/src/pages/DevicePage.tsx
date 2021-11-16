@@ -31,6 +31,8 @@ interface DeviceConfig {
   default_lon?: number
   write_endpoint?: string
   createdAt: string
+  mqtt_topic?: string
+  mqtt_url?: string
 }
 interface measurementSummaryRow {
   _field: string
@@ -72,44 +74,54 @@ async function fetchDeviceData(config: DeviceConfig): Promise<DeviceData> {
   } = config
   const influxDB = new InfluxDB({url: '/influx', token})
   const queryApi = influxDB.getQueryApi(org)
-  // query data from influxdb
-  const [measurements, sensors]: [
-    measurementSummaryRow[],
-    {[key: string]: string}[]
-  ] = await Promise.all([
-    queryApi.collectRows<any>(flux`
-  import "math"
-from(bucket: ${bucket})
-  |> range(start: -30d)
-  |> filter(fn: (r) => r._measurement == "environment")
-  |> filter(fn: (r) => r.clientId == ${id})
-  |> filter(fn: (r) => r._field != "s2_cell_id")
-  |> toFloat()
-  |> group(columns: ["_field"])
-  |> reduce(
-      fn: (r, accumulator) => ({
-        maxTime: (if r._time>accumulator.maxTime then r._time else accumulator.maxTime),
-        maxValue: (if r._value>accumulator.maxValue then r._value else accumulator.maxValue),
-        minValue: (if r._value<accumulator.minValue then r._value else accumulator.minValue),
-        count: accumulator.count + 1.0
-      }),
-      identity: {maxTime: 1970-01-01, count: 0.0, minValue: math.mInf(sign: 1), maxValue: math.mInf(sign: -1)}
-  )`),
-    queryApi.collectRows<any>(flux`
-from(bucket: ${bucket})
-  |> range(start: -30d)
-  |> filter(fn: (r) => r._measurement == "environment")
-  |> filter(fn: (r) => r.clientId == ${id})
-  |> keep(columns: ["TemperatureSensor", "HumiditySensor", "PressureSensor", "CO2Sensor", "TVOCSensor", "GPSSensor", "_time"])
-  |> map(fn: (r) => ({r with _value: 0}))
-  |> last()
-    `),
-  ])
+
+  const measurementsYieldName = 'measurements'
+  const sensorsYieldName = 'sensors'
+
+  const result = await queryApi.collectRows<any>(flux`
+    deviceData = from(bucket: ${bucket})
+      |> range(start: -30d)
+      |> filter(fn: (r) => r._measurement == "environment")
+      |> filter(fn: (r) => r.clientId == ${id})
+      |> filter(fn: (r) => r._field != "s2_cell_id")
+
+    measurements = deviceData
+      |> keep(columns: ["_field", "_value", "_time"])
+      |> group(columns: ["_field"])
+
+      counts    = measurements |> count()                |> keep(columns: ["_field", "_value"]) |> rename(columns: {_value: "count"   })
+      maxValues = measurements |> max  ()                |> keep(columns: ["_field", "_value"]) |> rename(columns: {_value: "maxValue"})
+      minValues = measurements |> min  ()                |> keep(columns: ["_field", "_value"]) |> rename(columns: {_value: "minValue"})
+      maxTimes  = measurements |> max  (column: "_time") |> keep(columns: ["_field", "_time" ]) |> rename(columns: {_time : "maxTime" })
+
+      j = (tables=<-, t) => join(tables: {tables, t}, on:["_field"])
+
+      counts
+        |> j(t: maxValues)
+        |> j(t: minValues)
+        |> j(t: maxTimes)
+        |> yield(name: ${measurementsYieldName})
+
+      deviceData
+        |> last()
+        |> keep(columns: [
+          "TemperatureSensor", "HumiditySensor", "PressureSensor", 
+          "CO2Sensor", "TVOCSensor", "GPSSensor"
+        ])
+        |> yield(name: ${sensorsYieldName})
+  `)
+
+  const measurements: measurementSummaryRow[] = result.filter(
+    (x) => x.result === measurementsYieldName
+  )
+  const sensors: {[key: string]: string} =
+    result.find((x) => x.result === sensorsYieldName) ?? {}
+
   measurements.forEach((x) => {
     const {_field} = x
     const senosorTagName =
       (_field === 'Lat' || _field === 'Lon' ? 'GPS' : _field) + 'Sensor'
-    x.sensor = sensors?.[0]?.[senosorTagName] ?? ''
+    x.sensor = sensors[senosorTagName] ?? ''
   })
   return {config, measurements}
 }
@@ -401,6 +413,18 @@ const DevicePage: FunctionComponent<
             label: 'InfluxDB Token',
             value: deviceData?.config.influx_token ? '***' : 'N/A',
           },
+          ...(mqttEnabled
+            ? [
+                {
+                  label: 'Mqtt URL',
+                  value: deviceData?.config?.mqtt_url,
+                },
+                {
+                  label: 'Mqtt topic',
+                  value: deviceData?.config?.mqtt_topic,
+                },
+              ]
+            : []),
         ]}
       />
       <Title>Measurements</Title>
