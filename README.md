@@ -50,15 +50,6 @@ docker run \
   ghcr.io/bonitoo-io/iot-center-v2/iot-center:nightly
 ```
 
-##### Authenticating to GitHub Packages with personal access token
-
-You must use a personal access token with the appropriate scopes to use image from GitHub Packages. 
-
-For more information, see "[Authenticating with a personal access token](https://docs.github.com/en/packages/using-github-packages-with-your-projects-ecosystem/configuring-docker-for-use-with-github-packages#authenticating-with-a-personal-access-token)".
-```
-cat ~/TOKEN.txt | docker login https://docker.pkg.github.com -u USERNAME --password-stdin
-```
-
 ### Develop and Play with IoT Center Application (hot-swap enabled)
 
 ```

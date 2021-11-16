@@ -1,35 +1,31 @@
 #
 # Build image
 #
-# Using 12.18.4-alpine instead 12-alpine to workaround https://discuss.circleci.com/t/docker-build-fails-with-nonsensical-eperm-operation-not-permitted-copyfile/37364
-FROM node:12.18.4-alpine AS BUILD_IMAGE
+FROM node:16-alpine AS builder
+ENV NODE_ENV production
 
-RUN mkdir -p /home/iot-center
-WORKDIR /home/iot-center
+# Install /app dependencies
+WORKDIR /app
+COPY package.json .
+COPY yarn.lock .
+RUN yarn install --production
 
+# Copy app files & build
+WORKDIR /app
 COPY . .
-
-# Install dependencies & build application
-RUN yarn install --frozen-lockfile
-RUN yarn build
-
-# Build binary
-#   - full list of targets: https://github.com/nexe/nexe/releases
-RUN npm i nexe -g
-RUN nexe -t alpine-x86-12.10.0 -o server.bin -i server
+RUN yarn build_docker
 
 #
 # Runtime image
 #
-FROM alpine:3.7
-
-ENV NODE_ENV=production
-
-RUN mkdir -p /home/iot-center/
-WORKDIR /home/iot-center/
-
-COPY --from=BUILD_IMAGE /home/iot-center/server.bin .
-COPY --from=BUILD_IMAGE /home/iot-center/ui/build/ /home/iot-center/ui/build/
-
+FROM node:16-alpine as production
+RUN apk add dumb-init
+ENV NODE_ENV production
+WORKDIR /usr/src/app
+# Copy built assets from builder
+COPY --chown=node:node --from=builder /app/ .
+# Expose port
 EXPOSE 5000
-CMD [ "/home/iot-center/server.bin" ]
+# Start IoT Center
+USER node
+CMD ["dumb-init", "yarn", "start"]

@@ -57,13 +57,18 @@ jobs:
           command: |
             pip install pydocstyle --user
             pydocstyle client_python.py
-  release-nightly:
+  release-nightly-docker:
     docker:
       - image: circleci/buildpack-deps:stretch
     steps:
       - checkout
       - setup_remote_docker:
-          version: 19.03.13
+          version: 20.10.7
+      - restore_cache:
+          keys:
+            - docker-cache-v1-{{ checksum "app/Dockerfile"  }}
+          paths:
+            - /caches/app.tar
       - run:
           name: Early return if this build is from a forked repository
           command: |
@@ -72,11 +77,29 @@ jobs:
               circleci step halt
             fi
       - run:
-          name: Build and push Docker image
+          name: Load Docker image layer cache
+          command: |
+            set +o pipefail
+            docker load -i ./caches/app.tar | true
+      - run:
+          name: Build Docker image
+          command: |
+            cd app/
+            docker build --cache-from=app -t docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly .
+      - run:
+          name: Save Docker image Cache
+          command: |
+            mkdir -p ./caches
+            docker save -o ./caches/app.tar docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly
+      - save_cache:
+          key: docker-cache-v1-{{ checksum "app/Dockerfile"  }}-{{ epoch }}
+          paths:
+            - ./caches/app.tar
+      - run:
+          name: Push Docker image
           command: |
             cd app/
             echo $GITHUB_TOKEN | docker login https://docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
-            docker build -t docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly .
             docker push docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly
 
 workflows:
@@ -85,7 +108,7 @@ workflows:
       - app:
           node_version: "12"
       - client-python
-      - release-nightly:
+      - release-nightly-docker:
           requires:
             - app
             - client-python
