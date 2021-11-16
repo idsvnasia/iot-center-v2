@@ -13,6 +13,9 @@ SET INFLUX_ORG=
 REM SET MQTT_TOPIC=iot_center
 REM SET MQTT_URL=mqtt://127.0.0.1:1883
 
+if [%1]==[mqtt] "C:\Program Files\Mosquitto\mosquitto.exe" -v
+if [%1]==[mqtt] exit
+
 if [%1]==[telegraf] telegraf --debug --config telegraf.conf
 if [%1]==[telegraf] exit
 
