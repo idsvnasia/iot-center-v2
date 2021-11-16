@@ -42,7 +42,6 @@ jobs:
   client-python:
     docker:
       - image: circleci/python:3.8-buster
-    working_directory:
     steps:
       - checkout
       - run:
@@ -83,12 +82,45 @@ jobs:
           name: Build Docker image
           command: |
             cd app/
-            docker build --cache-from=app -t docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly .
+            docker build --cache-from=app -t ghcr.io/bonitoo-io/iot-center-v2/iot-center:nightly .
+      - run:
+          name: Test Docker image
+          command: |
+            docker run \
+              --name influxdb_v2 \
+              --detach \
+              --rm \
+              --env DOCKER_INFLUXDB_INIT_MODE=setup \
+              --env DOCKER_INFLUXDB_INIT_USERNAME=my-user \
+              --env DOCKER_INFLUXDB_INIT_PASSWORD=my-password \
+              --env DOCKER_INFLUXDB_INIT_ORG=my-org \
+              --env DOCKER_INFLUXDB_INIT_BUCKET=iot_center \
+              --env DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-token \
+              --publish 8086:8086 \
+              influxdb:latest
+            docker run \
+              --name iot-center \
+              --detach \
+              --rm \
+              --link influxdb_v2 \
+              --env INFLUX_URL=http://influxdb_v2:8086 \
+              --env INFLUX_TOKEN=my-token \
+              --env INFLUX_ORG=my-org \
+              --publish 5000:5000 \
+              ghcr.io/bonitoo-io/iot-center-v2/iot-center:nightly
+            docker run \
+              --rm \
+              --link iot-center \
+              inutano/wget:1.20.3-r1 wget -S --spider --tries=10 --retry-connrefused --waitretry=5 http://iot-center:5000/
+      - run:
+          name: Print Docker output logs
+          command: docker logs iot-center
+          when: on_fail
       - run:
           name: Save Docker image Cache
           command: |
             mkdir -p ./caches
-            docker save -o ./caches/app.tar docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly
+            docker save -o ./caches/app.tar ghcr.io/bonitoo-io/iot-center-v2/iot-center:nightly
       - persist_to_workspace:
           root: ./caches
           paths:
@@ -121,8 +153,8 @@ jobs:
           name: Push Docker image
           command: |
             cd app/
-            echo $GITHUB_TOKEN | docker login https://docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
-            docker push docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly
+            echo $GITHUB_TOKEN | docker login https://ghcr.io -u $GITHUB_ACTOR --password-stdin
+            docker push ghcr.io/bonitoo-io/iot-center-v2/iot-center:nightly
 
 workflows:
   build:
