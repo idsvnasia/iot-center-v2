@@ -57,7 +57,7 @@ jobs:
           command: |
             pip install pydocstyle --user
             pydocstyle client_python.py
-  release-nightly-docker:
+  build-nightly-docker:
     docker:
       - image: circleci/buildpack-deps:stretch
     steps:
@@ -67,8 +67,6 @@ jobs:
       - restore_cache:
           keys:
             - docker-cache-v1-{{ checksum "app/Dockerfile"  }}
-          paths:
-            - /caches/app.tar
       - run:
           name: Early return if this build is from a forked repository
           command: |
@@ -91,10 +89,34 @@ jobs:
           command: |
             mkdir -p ./caches
             docker save -o ./caches/app.tar docker.pkg.github.com/bonitoo-io/iot-center-v2/iot-center:nightly
+      - persist_to_workspace:
+          root: ./caches
+          paths:
+            - ./app.tar
       - save_cache:
           key: docker-cache-v1-{{ checksum "app/Dockerfile"  }}-{{ epoch }}
           paths:
             - ./caches/app.tar
+  release-nightly-docker:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: Early return if this build is from a forked repository
+          command: |
+            if [[ $CIRCLE_PROJECT_USERNAME != "bonitoo-io" ]]; then
+              echo "Nothing to do for forked repositories, so marking this step successful"
+              circleci step halt
+            fi
+      - attach_workspace:
+          at: ./caches
+      - run:
+          name: Load Docker image from workspace cache
+          command: |
+            docker load -i ./caches/app.tar
       - run:
           name: Push Docker image
           command: |
@@ -108,10 +130,12 @@ workflows:
       - app:
           node_version: "12"
       - client-python
+      - build-nightly-docker
       - release-nightly-docker:
           requires:
             - app
             - client-python
+            - build-nightly-docker
           filters:
             branches:
               only: master
