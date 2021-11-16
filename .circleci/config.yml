@@ -162,7 +162,10 @@ workflows:
       - app:
           node_version: "12"
       - client-python
-      - build-nightly-docker
+      - build-nightly-docker:
+          filters:
+            branches:
+              only: master
       - release-nightly-docker:
           requires:
             - app
