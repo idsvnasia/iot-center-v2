@@ -1,6 +1,8 @@
 #!/bin/bash
 
 packageInstall () {
+  echo "================"
+  echo "Installing $1..."
   if [[ ! -z $YUM_CMD ]]; then
     sudo yum install $1
   elif [[ ! -z $APT_CMD ]]; then
@@ -30,17 +32,15 @@ MQTT_CMD=$(which mosquitto)
 
 #install npm tool
 if [[ -z $NPM_CMD ]]; then
-  echo "Installing npm..."
   packageInstall "npm"
 fi
 
 #install mosquitto tool
 if [[ -z $MQTT_CMD ]]; then
-  echo "Installing mosquitto..."
   packageInstall "mosquitto"
 fi
 
-#install yarn and lateststable node.js
+#install yarn and the latest stable node.js
 if [[ -z $BREW_CMD ]]; then
   echo "Installing yarn tool..."
   sudo npm install -g yarn

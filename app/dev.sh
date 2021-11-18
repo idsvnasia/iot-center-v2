@@ -36,5 +36,9 @@ if [ "$1" = "telegraf" ]; then
   exit
 fi
 
+if [ ! -d "node_modules" ]; then
+  yarn install
+fi
+
 #export NODE_OPTIONS=--openssl-legacy-provider
 yarn dev
