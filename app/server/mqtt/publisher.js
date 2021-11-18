@@ -11,7 +11,7 @@ const {
 const {parentPort} = require('worker_threads')
 
 let sendDataHandle = -1
-const GPX_SPEED_MODIFIER = 100
+const GPX_SPEED_MODIFIER = 10000000
 
 const measurements = [
   {name: 'Temperature', generate: generateTemperature},
@@ -28,15 +28,28 @@ require('fs').readFile('./apis/gpxData.json', (_err, data) => {
 
 const MONTH_MILLIS = 30 * 24 * 60 * 60 * 1000
 
+const getGPXIndex = (len, time) => {
+  // modifier has to be divisible by len so modif % len = 0 % len
+  const fixedModif = Math.floor(GPX_SPEED_MODIFIER / len) * len
+  // ((time % MONTH_MILLIS) / MONTH_MILLIS) transforms time into month cycle result is <0;1)
+  const indexFull = (((time % MONTH_MILLIS) / MONTH_MILLIS) * fixedModif) % len
+  const index = Math.floor(indexFull)
+  const rest = indexFull - index
+  return {index, rest}
+}
+
 const generateGPXData = (data, time) => {
   const len = data.length
-  const index =
-    Math.floor(
-      ((time % MONTH_MILLIS) / MONTH_MILLIS) * GPX_SPEED_MODIFIER * len
-    ) % len
-  const entry = data[index]
+  const {index, rest} = getGPXIndex(len, time)
+  const nextIndex = (index + 1) % len
 
-  return entry
+  const e0 = data[index]
+  const e1 = data[nextIndex]
+
+  const i = (a, b) => a * (1 - rest) + b * rest
+  const interpolatedResult = [i(e0[0], e1[0]), i(e0[1], e1[1])]
+
+  return interpolatedResult
 }
 
 parentPort.on('message', async (data) => {

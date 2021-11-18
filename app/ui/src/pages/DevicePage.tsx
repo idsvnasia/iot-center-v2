@@ -434,7 +434,9 @@ const DevicePage: FunctionComponent<
         pagination={false}
       />
       <div style={{height: 20}} />
-      {isVirtualDevice && mqttEnabled ? <RealTimeSettings onBeforeStart={async () => writeData()} /> : undefined}
+      {isVirtualDevice && mqttEnabled ? (
+        <RealTimeSettings onBeforeStart={async () => writeData()} />
+      ) : undefined}
     </PageContent>
   )
 }
