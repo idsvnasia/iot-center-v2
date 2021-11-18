@@ -1,18 +1,24 @@
 const {MQTT_URL, MQTT_TOPIC} = require('../env')
 const createClient = require('./createClient')
 const {Point} = require('@influxdata/influxdb-client')
-const {generateValue} = require('./util/generateValue')
+const {
+  generateTemperature,
+  generateHumidity,
+  generatePressure,
+  generateCO2,
+  generateTVOC,
+} = require('./util/generateValue')
 const {parentPort} = require('worker_threads')
 
 let sendDataHandle = -1
 const GPX_SPEED_MODIFIER = 100
 
 const measurements = [
-  {name: 'Temperature', period: 30, min: 0, max: 40},
-  {name: 'Humidity', period: 90, min: 0, max: 99},
-  {name: 'Pressure', period: 20, min: 970, max: 1050},
-  {name: 'CO2', period: 1, min: 400, max: 3000},
-  {name: 'TVOC', period: 1, min: 250, max: 2000},
+  {name: 'Temperature', generate: generateTemperature},
+  {name: 'Humidity', generate: generateHumidity},
+  {name: 'Pressure', generate: generatePressure},
+  {name: 'CO2', generate: generateCO2},
+  {name: 'TVOC', generate: generateTVOC},
 ]
 
 let gpxData
@@ -49,8 +55,8 @@ parentPort.on('message', async (data) => {
   const sendData = async () => {
     const point = new Point('environment')
     const now = Date.now()
-    measurements.forEach(({name, max, min, period}) => {
-      point.floatField(name, generateValue(period, min, max, now))
+    measurements.forEach(({name, generate}) => {
+      point.floatField(name, generate(now))
     })
     if (gpxData) {
       const [lat, lon] = generateGPXData(gpxData, Date.now())

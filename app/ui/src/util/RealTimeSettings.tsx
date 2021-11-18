@@ -12,7 +12,11 @@ const wrapperCol = Object.fromEntries(
   Object.entries(labelCol).map(([k, v]) => [k, 24 - v])
 )
 
-const RealTimeSettings: FunctionComponent = () => {
+interface Props {
+  onBeforeStart?: (e: {shouldStart: boolean}) => void | Promise<void>
+}
+
+const RealTimeSettings: FunctionComponent<Props> = (props) => {
   const [settings, setSettings] = useState<MqttSettings>()
   const [sendInterval, setSendInterval] = useState('100')
   const sendIntervalValid =
@@ -46,7 +50,17 @@ const RealTimeSettings: FunctionComponent = () => {
   }
 
   const setRunning = (isRunning: boolean) => {
-    if (settings) applyChanges({...settings, running: isRunning})
+    if (settings) {
+      if (isRunning) {
+        const event = {shouldStart: true}
+
+        Promise.all([props?.onBeforeStart?.(event)]).then(() => {
+          if (event.shouldStart) applyChanges({...settings, running: isRunning})
+        })
+      } else {
+        applyChanges({...settings, running: isRunning})
+      }
+    }
   }
 
   return (

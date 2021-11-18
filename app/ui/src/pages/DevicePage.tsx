@@ -90,8 +90,8 @@ async function fetchDeviceData(config: DeviceConfig): Promise<DeviceData> {
       |> group(columns: ["_field"])
 
       counts    = measurements |> count()                |> keep(columns: ["_field", "_value"]) |> rename(columns: {_value: "count"   })
-      maxValues = measurements |> max  ()                |> keep(columns: ["_field", "_value"]) |> rename(columns: {_value: "maxValue"})
-      minValues = measurements |> min  ()                |> keep(columns: ["_field", "_value"]) |> rename(columns: {_value: "minValue"})
+      maxValues = measurements |> max  ()  |> toFloat()  |> keep(columns: ["_field", "_value"]) |> rename(columns: {_value: "maxValue"})
+      minValues = measurements |> min  ()  |> toFloat()  |> keep(columns: ["_field", "_value"]) |> rename(columns: {_value: "minValue"})
       maxTimes  = measurements |> max  (column: "_time") |> keep(columns: ["_field", "_time" ]) |> rename(columns: {_time : "maxTime" })
 
       j = (tables=<-, t) => join(tables: {tables, t}, on:["_field"])
@@ -434,7 +434,7 @@ const DevicePage: FunctionComponent<
         pagination={false}
       />
       <div style={{height: 20}} />
-      {isVirtualDevice && mqttEnabled ? <RealTimeSettings /> : undefined}
+      {isVirtualDevice && mqttEnabled ? <RealTimeSettings onBeforeStart={async () => writeData()} /> : undefined}
     </PageContent>
   )
 }
