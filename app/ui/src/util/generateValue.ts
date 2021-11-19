@@ -33,15 +33,35 @@ function generateValue(
 export const fetchGPXData = async (): Promise<[number, number][]> =>
   await (await fetch('/api/gpxVirtual')).json()
 
+const GPX_SPEED_MODIFIER = 10000000
+const getGPXIndex = (len: number, time: number) => {
+  // modifier has to be divisible by len so modif % len = 0 % len
+  const fixedModif = Math.floor(GPX_SPEED_MODIFIER / len) * len
+  // ((time % MONTH_MILLIS) / MONTH_MILLIS) transforms time into month cycle result is <0;1)
+  const indexFull = (((time % MONTH_MILLIS) / MONTH_MILLIS) * fixedModif) % len
+  const index = Math.floor(indexFull)
+  const rest = indexFull - index
+  return {index, rest}
+}
+
 export const generateGPXData = (
   data: [number, number][],
   time: number
 ): [number, number] => {
   const len = data.length
-  const index = Math.floor(((time % MONTH_MILLIS) / MONTH_MILLIS) * len) % len
-  const entry = data[index]
+  const {index, rest} = getGPXIndex(len, time)
+  const nextIndex = (index + 1) % len
 
-  return entry
+  const [e0lat, e0lon] = data[index]
+  const [e1lat, e1lon] = data[nextIndex]
+
+  const i = (a: number, b: number) => a * (1 - rest) + b * rest
+  const interpolatedResult: [number, number] = [
+    i(e0lat, e1lat),
+    i(e0lon, e1lon),
+  ]
+
+  return interpolatedResult
 }
 
 export const generateTemperature = generateValue.bind(undefined, 30, 0, 40)

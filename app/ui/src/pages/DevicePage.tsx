@@ -141,7 +141,9 @@ async function fetchDeviceMissingDataTimeStamps(
 
   const result = await queryApi.collectRows<any>(flux`
     from(bucket: ${bucket})
-      |> range(start: -7d, stop: -20s)
+      // stop is set to give telegraf some time to flush points from mqtt 
+      //   so we don't write one point two times
+      |> range(start: -7d, stop: -1m)
       |> filter(fn: (r) => r["_measurement"] == "environment")
       |> filter(fn: (r) => r.clientId == ${id})
       |> filter(fn: (r) => r["_field"] == "Temperature")
@@ -482,7 +484,7 @@ const DevicePage: FunctionComponent<
       />
       <div style={{height: 20}} />
       {isVirtualDevice && mqttEnabled ? (
-        <RealTimeSettings onBeforeStart={async () => writeData()} />
+        <RealTimeSettings onBeforeStart={writeData} />
       ) : undefined}
     </PageContent>
   )

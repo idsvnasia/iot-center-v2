@@ -35,11 +35,11 @@ const generateGPXData = (data, time) => {
   const {index, rest} = getGPXIndex(len, time)
   const nextIndex = (index + 1) % len
 
-  const e0 = data[index]
-  const e1 = data[nextIndex]
+  const [e0lat, e0lon] = data[index]
+  const [e1lat, e1lon] = data[nextIndex]
 
   const i = (a, b) => a * (1 - rest) + b * rest
-  const interpolatedResult = [i(e0[0], e1[0]), i(e0[1], e1[1])]
+  const interpolatedResult = [i(e0lat, e1lat), i(e0lon, e1lon)]
 
   return interpolatedResult
 }
