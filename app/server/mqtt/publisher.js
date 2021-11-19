@@ -13,14 +13,6 @@ const {parentPort} = require('worker_threads')
 let sendDataHandle = -1
 const GPX_SPEED_MODIFIER = 10000000
 
-const measurements = [
-  {name: 'Temperature', generate: generateTemperature},
-  {name: 'Humidity', generate: generateHumidity},
-  {name: 'Pressure', generate: generatePressure},
-  {name: 'CO2', generate: generateCO2},
-  {name: 'TVOC', generate: generateTVOC},
-]
-
 let gpxData
 require('fs').readFile('./apis/gpxData.json', (_err, data) => {
   gpxData = JSON.parse(data.toString('utf-8'))
@@ -65,18 +57,23 @@ parentPort.on('message', async (data) => {
 
   const client = await createClient()
   console.log('Publishing to', MQTT_TOPIC, 'at', MQTT_URL)
+
   const sendData = async () => {
     const point = new Point('environment')
     const now = Date.now()
-    measurements.forEach(({name, generate}) => {
-      point.floatField(name, generate(now))
-    })
+
     if (gpxData) {
-      const [lat, lon] = generateGPXData(gpxData, Date.now())
+      const [lat, lon] = generateGPXData(gpxData, now)
       point.floatField('Lat', lat)
       point.floatField('Lon', lon)
     }
+
     point
+      .floatField('Temperature', generateTemperature(now))
+      .floatField('Humidity', generateHumidity(now))
+      .floatField('Pressure', generatePressure(now))
+      .intField('CO2', generateCO2(now))
+      .intField('TVOC', generateTVOC(now))
       .tag('TemperatureSensor', 'virtual_TemperatureSensor')
       .tag('HumiditySensor', 'virtual_HumiditySensor')
       .tag('PressureSensor', 'virtual_PressureSensor')
