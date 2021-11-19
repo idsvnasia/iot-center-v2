@@ -11,15 +11,7 @@ const {
 const {parentPort} = require('worker_threads')
 
 let sendDataHandle = -1
-const GPX_SPEED_MODIFIER = 100
-
-const measurements = [
-  {name: 'Temperature', generate: generateTemperature},
-  {name: 'Humidity', generate: generateHumidity},
-  {name: 'Pressure', generate: generatePressure},
-  {name: 'CO2', generate: generateCO2},
-  {name: 'TVOC', generate: generateTVOC},
-]
+const GPX_SPEED_MODIFIER = 10000000
 
 let gpxData
 require('fs').readFile('./apis/gpxData.json', (_err, data) => {
@@ -28,15 +20,28 @@ require('fs').readFile('./apis/gpxData.json', (_err, data) => {
 
 const MONTH_MILLIS = 30 * 24 * 60 * 60 * 1000
 
+const getGPXIndex = (len, time) => {
+  // modifier has to be divisible by len so modif % len = 0 % len
+  const fixedModif = Math.floor(GPX_SPEED_MODIFIER / len) * len
+  // ((time % MONTH_MILLIS) / MONTH_MILLIS) transforms time into month cycle result is <0;1)
+  const indexFull = (((time % MONTH_MILLIS) / MONTH_MILLIS) * fixedModif) % len
+  const index = Math.floor(indexFull)
+  const rest = indexFull - index
+  return {index, rest}
+}
+
 const generateGPXData = (data, time) => {
   const len = data.length
-  const index =
-    Math.floor(
-      ((time % MONTH_MILLIS) / MONTH_MILLIS) * GPX_SPEED_MODIFIER * len
-    ) % len
-  const entry = data[index]
+  const {index, rest} = getGPXIndex(len, time)
+  const nextIndex = (index + 1) % len
 
-  return entry
+  const [e0lat, e0lon] = data[index]
+  const [e1lat, e1lon] = data[nextIndex]
+
+  const i = (a, b) => a * (1 - rest) + b * rest
+  const interpolatedResult = [i(e0lat, e1lat), i(e0lon, e1lon)]
+
+  return interpolatedResult
 }
 
 parentPort.on('message', async (data) => {
@@ -52,18 +57,23 @@ parentPort.on('message', async (data) => {
 
   const client = await createClient()
   console.log('Publishing to', MQTT_TOPIC, 'at', MQTT_URL)
+
   const sendData = async () => {
     const point = new Point('environment')
     const now = Date.now()
-    measurements.forEach(({name, generate}) => {
-      point.floatField(name, generate(now))
-    })
+
     if (gpxData) {
-      const [lat, lon] = generateGPXData(gpxData, Date.now())
+      const [lat, lon] = generateGPXData(gpxData, now)
       point.floatField('Lat', lat)
       point.floatField('Lon', lon)
     }
+
     point
+      .floatField('Temperature', generateTemperature(now))
+      .floatField('Humidity', generateHumidity(now))
+      .floatField('Pressure', generatePressure(now))
+      .intField('CO2', generateCO2(now))
+      .intField('TVOC', generateTVOC(now))
       .tag('TemperatureSensor', 'virtual_TemperatureSensor')
       .tag('HumiditySensor', 'virtual_HumiditySensor')
       .tag('PressureSensor', 'virtual_PressureSensor')
