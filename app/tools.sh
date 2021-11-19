@@ -30,6 +30,13 @@ BREW_CMD=$(which brew)
 NPM_CMD=$(which npm)
 MQTT_CMD=$(which mosquitto)
 
+#macOS - install yarn and mosquitto only
+if [[ ! -z $BREW_CMD ]]; then
+  brew install yarn
+  brew install mosquitto
+  exit
+fi
+
 #install npm tool
 if [[ -z $NPM_CMD ]]; then
   packageInstall "npm"
