@@ -5,7 +5,7 @@ const setupWsBroker = require('./ws/broker')
 const {Worker} = require('worker_threads')
 
 const publisherDefaultSettings = {
-  running: false,
+  running: true,
   sendInterval: 100,
 }
 let publisherSettings = publisherDefaultSettings

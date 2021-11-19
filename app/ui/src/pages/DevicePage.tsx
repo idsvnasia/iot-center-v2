@@ -126,9 +126,41 @@ async function fetchDeviceData(config: DeviceConfig): Promise<DeviceData> {
   return {config, measurements}
 }
 
+async function fetchDeviceMissingDataTimeStamps(
+  config: DeviceConfig
+): Promise<number[]> {
+  const {
+    // influx_url: url, // use '/influx' proxy to avoid problem with InfluxDB v2 Beta (Docker)
+    influx_token: token,
+    influx_org: org,
+    influx_bucket: bucket,
+    id,
+  } = config
+  const influxDB = new InfluxDB({url: '/influx', token})
+  const queryApi = influxDB.getQueryApi(org)
+
+  const result = await queryApi.collectRows<any>(flux`
+    from(bucket: ${bucket})
+      |> range(start: -7d, stop: -20s)
+      |> filter(fn: (r) => r["_measurement"] == "environment")
+      |> filter(fn: (r) => r.clientId == ${id})
+      |> filter(fn: (r) => r["_field"] == "Temperature")
+      |> aggregateWindow(every: 1m, fn: count, createEmpty: true)
+      |> filter(fn: (r) => r._value == 0)
+      |> keep(columns: ["_time"])
+      |> rename(columns: {_time: "_value"})
+      |> toInt()
+      // transform from ns to ms
+      |> map(fn: (r)=> ({_value: r._value/1000000}))
+    `)
+
+  return result.map((x) => x._value).slice(1)
+}
+
 async function writeEmulatedData(
   state: DeviceData,
-  onProgress: ProgressFn
+  onProgress: ProgressFn,
+  missingDataTimeStamps?: number[]
 ): Promise<number> {
   const {
     // influx_url: url, // use '/influx' proxy to avoid problems with InfluxDB v2 Beta (Docker)
@@ -147,7 +179,8 @@ async function writeEmulatedData(
     lastTime = toTime - 7 * 24 * 60 * 60 * 1000
   }
   const getGPX = generateGPXData.bind(undefined, await fetchGPXData())
-  const totalPoints = Math.trunc((toTime - lastTime) / 60_000)
+  const totalPoints =
+    missingDataTimeStamps?.length || Math.trunc((toTime - lastTime) / 60_000)
   let pointsWritten = 0
   if (totalPoints > 0) {
     const batchSize = 2000
@@ -161,15 +194,15 @@ async function writeEmulatedData(
       // write random temperatures
       const point = new Point('environment') // reuse the same point to spare memory
       onProgress(0, 0, totalPoints)
-      while (lastTime < toTime) {
-        lastTime += 60_000 // emulate next minute
-        const gpx = getGPX(lastTime)
+
+      const writePoint = async (time: number) => {
+        const gpx = getGPX(time)
         point
-          .floatField('Temperature', generateTemperature(lastTime))
-          .floatField('Humidity', generateHumidity(lastTime))
-          .floatField('Pressure', generatePressure(lastTime))
-          .intField('CO2', generateCO2(lastTime))
-          .intField('TVOC', generateTVOC(lastTime))
+          .floatField('Temperature', generateTemperature(time))
+          .floatField('Humidity', generateHumidity(time))
+          .floatField('Pressure', generatePressure(time))
+          .intField('CO2', generateCO2(time))
+          .intField('TVOC', generateTVOC(time))
           .floatField('Lat', gpx[0] || state.config.default_lat || 50.0873254)
           .floatField('Lon', gpx[1] || state.config.default_lon || 14.4071543)
           .tag('TemperatureSensor', 'virtual_TemperatureSensor')
@@ -178,7 +211,7 @@ async function writeEmulatedData(
           .tag('CO2Sensor', 'virtual_CO2Sensor')
           .tag('TVOCSensor', 'virtual_TVOCSensor')
           .tag('GPSSensor', 'virtual_GPSSensor')
-          .timestamp(String(lastTime) + '000000')
+          .timestamp(String(time) + '000000')
         writeApi.writePoint(point)
 
         pointsWritten++
@@ -191,6 +224,15 @@ async function writeEmulatedData(
           )
         }
       }
+
+      if (missingDataTimeStamps?.length)
+        for (const timestamp of missingDataTimeStamps)
+          await writePoint(timestamp)
+      else
+        while (lastTime < toTime) {
+          lastTime += 60_000 // emulate next minute
+          await writePoint(lastTime)
+        }
       await writeApi.flush()
     } finally {
       await writeApi.close()
@@ -255,9 +297,14 @@ const DevicePage: FunctionComponent<
       setProgress(percent)
     }
     try {
+      if (!deviceData) return
+      const missingDataTimeStamps = mqttEnabled
+        ? await fetchDeviceMissingDataTimeStamps(deviceData.config)
+        : undefined
       const count = await writeEmulatedData(
-        deviceData as DeviceData,
-        onProgress
+        deviceData,
+        onProgress,
+        missingDataTimeStamps
       )
       if (count) {
         notification.success({
