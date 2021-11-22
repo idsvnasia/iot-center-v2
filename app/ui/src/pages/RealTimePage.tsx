@@ -454,6 +454,8 @@ const RealTimePage: FunctionComponent<
 
   const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
 
+  mapRef.current.setDragable(!isRealtime)
+
   /** Graph is showed with fixed time range if set */
   const retentionTime = isRealtime
     ? timeOptionsRealtime[
@@ -760,7 +762,10 @@ const RealTimePage: FunctionComponent<
         <>
           Realtime Dashboard
           {isVirtualDevice ? (
-            <Tooltip title="This page writes temperature measurements for the last 7 days from an emulated device, the temperature is reported every minute.">
+            <Tooltip
+              // TODO: update text to fit Realtime Dashboard
+              title="This page writes temperature measurements for the last 7 days from an emulated device, the temperature is reported every minute."
+            >
               <InfoCircleFilled style={{fontSize: '1em', marginLeft: 5}} />
             </Tooltip>
           ) : undefined}

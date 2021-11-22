@@ -10,7 +10,6 @@ import {
   generatePressure,
   generateCO2,
   generateTVOC,
-  fetchGPXData,
   generateGPXData,
 } from '../util/generateValue'
 import {InfoCircleFilled, PlayCircleOutlined} from '@ant-design/icons'
@@ -158,6 +157,9 @@ async function fetchDeviceMissingDataTimeStamps(
 
   return result.map((x) => x._value).slice(1)
 }
+
+const fetchGPXData = async (): Promise<[number, number][]> =>
+  await (await fetch('/api/gpxVirtual')).json()
 
 async function writeEmulatedData(
   state: DeviceData,

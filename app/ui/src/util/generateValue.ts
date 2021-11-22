@@ -1,5 +1,6 @@
 const DAY_MILLIS = 24 * 60 * 60 * 1000
 const MONTH_MILLIS = 30 * 24 * 60 * 60 * 1000
+const GPX_SPEED_MODIFIER = 5000000
 
 /**
  * Generates measurement values for a specific time.
@@ -30,10 +31,6 @@ function generateValue(
   )
 }
 
-export const fetchGPXData = async (): Promise<[number, number][]> =>
-  await (await fetch('/api/gpxVirtual')).json()
-
-const GPX_SPEED_MODIFIER = 10000000
 const getGPXIndex = (len: number, time: number) => {
   // modifier has to be divisible by len so modif % len = 0 % len
   const fixedModif = Math.floor(GPX_SPEED_MODIFIER / len) * len

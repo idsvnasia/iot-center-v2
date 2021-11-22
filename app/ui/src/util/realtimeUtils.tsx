@@ -445,6 +445,7 @@ export type TimePoint = [number, number, number]
 
 export class TimeMap {
   private _points: TimePoint[] = []
+  private _dragable = false
 
   public retentionTime = Infinity
 
@@ -489,13 +490,22 @@ export class TimeMap {
 
     if (this._points.length) {
       const last = (this._points[this._points.length - 1] as any) as LatLng
-      this._map.setView(last as any, this._map.getZoom(), {
-        animate: true,
-        pan: {
-          duration: 1,
-        },
-      } as any)
-      this._marker.setLatLng(last)
+      try {
+        this._map.setView(last as any, this._map.getZoom(), {
+          animate: true,
+          pan: {
+            duration: 1,
+          },
+        } as any)
+        this._marker.setLatLng(last)
+      } catch (e: any) {
+        // manipulating map properties can throw an error when map no longer exist
+        console.warn(
+          `error thrown by leaflet map: ${
+            e?.message ?? e ?? 'unspecific error'
+          }`
+        )
+      }
     } else {
       this._marker.setLatLng([0, 0])
     }
@@ -520,6 +530,11 @@ export class TimeMap {
     }
   }
 
+  public setDragable(dragable: boolean): void {
+    this._dragable = dragable
+    if (this._map) this._map.options.dragging = dragable
+  }
+
   private _map?: leaflet.Map
   private _marker?: leaflet.Marker
   private _path?: AntPath
@@ -532,8 +547,8 @@ export class TimeMap {
       ? (this._points[this._points.length - 1] as any)
       : [51.4921374, -0.1928784]
     const map = leaflet
-      .map(container, {scrollWheelZoom: false, dragging: false})
-      .setView(point, 14)
+      .map(container, {scrollWheelZoom: false, dragging: this._dragable})
+      .setView(point, 13)
 
     leaflet
       .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

@@ -7,42 +7,16 @@ const {
   generatePressure,
   generateCO2,
   generateTVOC,
+  generateGPXData,
 } = require('./util/generateValue')
 const {parentPort} = require('worker_threads')
 
 let sendDataHandle = -1
-const GPX_SPEED_MODIFIER = 10000000
 
 let gpxData
 require('fs').readFile('./apis/gpxData.json', (_err, data) => {
   gpxData = JSON.parse(data.toString('utf-8'))
 })
-
-const MONTH_MILLIS = 30 * 24 * 60 * 60 * 1000
-
-const getGPXIndex = (len, time) => {
-  // modifier has to be divisible by len so modif % len = 0 % len
-  const fixedModif = Math.floor(GPX_SPEED_MODIFIER / len) * len
-  // ((time % MONTH_MILLIS) / MONTH_MILLIS) transforms time into month cycle result is <0;1)
-  const indexFull = (((time % MONTH_MILLIS) / MONTH_MILLIS) * fixedModif) % len
-  const index = Math.floor(indexFull)
-  const rest = indexFull - index
-  return {index, rest}
-}
-
-const generateGPXData = (data, time) => {
-  const len = data.length
-  const {index, rest} = getGPXIndex(len, time)
-  const nextIndex = (index + 1) % len
-
-  const [e0lat, e0lon] = data[index]
-  const [e1lat, e1lon] = data[nextIndex]
-
-  const i = (a, b) => a * (1 - rest) + b * rest
-  const interpolatedResult = [i(e0lat, e1lat), i(e0lon, e1lon)]
-
-  return interpolatedResult
-}
 
 parentPort.on('message', async (data) => {
   if (!(MQTT_URL && MQTT_TOPIC))
