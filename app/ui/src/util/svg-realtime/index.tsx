@@ -1,7 +1,7 @@
 import React, {useEffect, useRef} from 'react'
 import {format, isFormatString} from '../format'
 import {useRafOnce} from '../realtimeUtils'
-import {ReactComponent as SvgFactory} from './IoT_Center_Diagram_v2.svg'
+
 
 /*
   for updating svg from inkskape:
@@ -11,8 +11,8 @@ import {ReactComponent as SvgFactory} from './IoT_Center_Diagram_v2.svg'
     - remove all naspaced attributes (containing : e.g. xmlns:dc) of svg element 
 */
 
-// TODO: make this universal - pass svg as prop
-export const useSVGRelatimeFactory = () => {
+// TODO: add number formating (decimals etc) to formater, formater will output text like ---.-- when number is missing as a placeholder, remove replace("undefined", "") and formating in RealTimePage
+export const useRelatimeSVG = (svgElement: JSX.Element) => {
   const formatableElementsRef = useRef<{el: Element; formatString: string}[]>(
     []
   )
@@ -21,7 +21,7 @@ export const useSVGRelatimeFactory = () => {
   const update = useRafOnce(() => {
     for (const {el, formatString} of formatableElementsRef.current) {
       try {
-        el.textContent = format(formatString, fieldsRef.current)
+        el.textContent = format(formatString, fieldsRef.current).replace("undefined", "")
       } catch (e) {
         console.error(e)
       }
@@ -38,11 +38,11 @@ export const useSVGRelatimeFactory = () => {
     update()
   }
 
-  const elementRef = useRef<SVGSVGElement>(null)
+  const elementRef = useRef<HTMLDivElement>(null)
 
   const factoryElement = (
-    <div>
-      <SvgFactory ref={elementRef} />
+    <div ref={elementRef}>
+      {svgElement}
     </div>
   )
 
@@ -54,8 +54,9 @@ export const useSVGRelatimeFactory = () => {
   }
 
   useEffect(() => {
-    const root = elementRef.current
+    formatableElementsRef.current = [];
 
+    const root = elementRef.current
     const rec = (el: Element | null) => {
       if (!el) return;
       const child = Array.from(el.children)

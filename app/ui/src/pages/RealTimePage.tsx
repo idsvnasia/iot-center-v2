@@ -24,7 +24,8 @@ import {Row, Col, Collapse, Empty, Divider} from 'antd'
 import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {colorLink, colorPrimary} from '../styles/colors'
-import {useSVGRelatimeFactory} from '../util/svg-realtime'
+import {useRelatimeSVG} from '../util/svg-realtime'
+import {ReactComponent as SvgFactory} from '../util/svg-realtime/IoT_Center_Diagram_v2.svg'
 
 /*
  ********************************************
@@ -497,8 +498,15 @@ const RealTimePage: FunctionComponent<
     mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
 
     const latest = getDiagramEntyPointLatestValues(data)
+    const formatedLatest = latest.map((x) => {
+      const decimalPlaces =
+        x.key === 'Lat' || x.key === 'Lon'
+          ? 5
+          : measurementsDefinitions[x.key]?.decimalPlaces ?? 0
+      return {...x, value: `${x.value.toFixed(decimalPlaces ?? 0)}`}
+    })
     updateFactory(
-      Object.fromEntries(latest.map(({key, value}) => [key, value]))
+      Object.fromEntries(formatedLatest.map(({key, value}) => [key, value]))
     )
 
     for (const field of fields) {
@@ -530,8 +538,8 @@ const RealTimePage: FunctionComponent<
       updatersGaugeRef.current[measurement]?.(undefined)
       updatersLineRef.current[measurement]?.(undefined)
       mapRef.current.clear()
-      clearFactory();
-      updateFactory({deviceId: deviceIdRef.current});
+      clearFactory()
+      updateFactory({deviceId: deviceIdRef.current})
     }
   }).current
 
@@ -794,8 +802,7 @@ const RealTimePage: FunctionComponent<
       spin={loading}
       forceShowScroll={true}
     >
-      <Card>{factoryElement}</Card>
-      <div style={{height: 24}} />
+      <Card style={{marginBottom: 24}}>{factoryElement}</Card>
       <div style={receivedDataFields.length ? {} : {display: 'none'}}>
         {gauges}
         {plotDivider}
