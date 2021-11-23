@@ -64,32 +64,42 @@ else
   echo "mosquitto installed, skipping installation"
 fi
 
+#check node version - if too old, clear path
 if [ ! -z $NODE_CMD ]; then
-  NODE_VER=`node --version | cut -d. -f1 | sed 's/[^0-9]*//g'`
+  NODE_VER=$(node --version | cut -d. -f1 | sed 's/[^0-9]*//g')
   echo "major node version: $NODE_VER"
   if [ $NODE_VER -lt 12 ]; then
     NODE_CMD=""
+    echo "node needs to be upgraded"
   fi
 fi
 
-
-#install yarn and the latest stable node.js
-if [[ -z $BREW_CMD ]]; then
-  if [[ -z $YARN_CMD ]]; then
-    echo "Installing yarn tool..."
-    sudo npm install -g yarn
-  else
-    echo "yarn installed, skipping installation"
-  fi
-  if [[ -z $NODE_CMD ]]; then
-    echo "Installing node tool..."
-    sudo npm install -g n
-    sudo n stable
-  else
-    echo "node installed, skipping installation"
+#check yarn version - if too old (e.g. 0.32+git), clear path
+if [ ! -z $YARN_CMD ]; then
+  YARN_VER=$(yarn --version)
+  echo "yarn version: $YARN_VER"
+  if [[ $YARN_VER == *"git"* ]]; then
+    YARN_CMD=""
+    echo "yearn needs to be upgraded"
   fi
 fi
 
+#install yarn
+if [[ -z $YARN_CMD ]]; then
+  echo "Installing yarn tool..."
+  sudo npm install -g yarn
+else
+  echo "yarn installed, skipping installation"
+fi
+
+#install the latest stable node.js
+if [[ -z $NODE_CMD ]]; then
+  echo "Installing node tool..."
+  sudo npm install -g n
+  sudo n stable
+else
+  echo "node installed, skipping installation"
+fi
 
 if [ ! -d "node_modules" ]; then
   yarn install
