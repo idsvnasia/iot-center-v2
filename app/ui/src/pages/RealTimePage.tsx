@@ -496,19 +496,6 @@ const RealTimePage: FunctionComponent<
 
     mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
 
-    const map = mapRef.current
-    if (map) {
-      const lats = data.filter((x) => x.key === 'Lat')
-      const points = lats
-        .map(({value: lat, time}) => [
-          lat,
-          data.find((x) => x.key === 'Lon' && x.time === time)?.value,
-          time,
-        ])
-        .filter((x) => !x.some((x) => typeof x !== 'number')) as TimePoint[]
-
-    mapRef.current?.addPoints?.(diagramEntryPointsToMapTimePoints(data))
-
     const latest = getDiagramEntyPointLatestValues(data)
     updateFactory(
       Object.fromEntries(latest.map(({key, value}) => [key, value]))
@@ -804,7 +791,6 @@ const RealTimePage: FunctionComponent<
       }
       titleExtra={pageControls}
       message={message}
-      // loading for some reason makes map disappear
       spin={loading}
       forceShowScroll={true}
     >

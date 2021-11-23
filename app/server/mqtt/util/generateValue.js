@@ -2,7 +2,6 @@ const DAY_MILLIS = 24 * 60 * 60 * 1000
 const MONTH_MILLIS = 30 * 24 * 60 * 60 * 1000
 const GPX_SPEED_MODIFIER = 400000
 
-
 /**
  * Generates measurement values for a specific time.
  * @param {number} period period of the generated data (days)
