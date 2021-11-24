@@ -188,7 +188,8 @@ async function writeEmulatedData(
   let pointsWritten = 0
   if (totalPoints > 0) {
     const batchSize = 2000
-    const url = write_endpoint ? write_endpoint : '/influx'
+    const url =
+      write_endpoint && write_endpoint !== '/mqtt' ? write_endpoint : '/influx'
     const influxDB = new InfluxDB({url, token})
     const writeApi = influxDB.getWriteApi(org, bucket, 'ns', {
       batchSize: batchSize + 1,
