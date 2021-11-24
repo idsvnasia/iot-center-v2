@@ -35,7 +35,7 @@ NODE_CMD=$(which node)
 
 
 #update files from git
-echo "Synchronizing the latest source code version..."
+echo "Synchronizing source code git..."
 git pull
 
 #macOS - install yarn, telegraf and mosquitto
@@ -47,6 +47,9 @@ if [[ ! -z $BREW_CMD ]]; then
   brew install telegraf
   echo "Installing mosquitto..."
   brew install mosquitto
+  if [ ! -d "node_modules" ]; then
+    yarn install
+  fi
   exit
 fi
 
