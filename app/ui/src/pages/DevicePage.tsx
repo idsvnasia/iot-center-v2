@@ -2,7 +2,6 @@ import React, {useState, useEffect, FunctionComponent} from 'react'
 import {InfluxDB, flux, Point} from '@influxdata/influxdb-client'
 import {Tooltip, Button, Progress, notification} from 'antd'
 import {RouteComponentProps} from 'react-router-dom'
-
 import PageContent, {Message} from './PageContent'
 import {
   generateTemperature,
@@ -18,7 +17,7 @@ import {colorLink} from '../styles/colors'
 import {Title} from '../util/Antd.utils'
 import {GridDescription} from '../util/GridDescription'
 import {IconDashboard, IconRefresh, IconWriteData} from '../styles/icons'
-import RealTimeSettings from '../util/RealTimeSettings'
+import RealTimeSettings from '../util/realtime/RealTimeSettings'
 
 interface DeviceConfig {
   influx_url: string

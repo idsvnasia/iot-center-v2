@@ -1,6 +1,7 @@
 import {ParameterizedQuery, QueryApi} from '@influxdata/influxdb-client'
 import {queryToTable, TableOptions} from '@influxdata/influxdb-client-giraffe'
 import {Table, newTable} from '@influxdata/giraffe'
+
 /**
  * Executes a flux query and iterrativelly collects results into a giraffe's Table.
  *

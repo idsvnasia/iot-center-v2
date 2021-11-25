@@ -11,7 +11,7 @@ import {
   TimePoint,
   useMap,
   useWebSocket,
-} from '../util/realtimeUtils'
+} from '../util/realtime'
 import {VIRTUAL_DEVICE} from '../App'
 import {RouteComponentProps} from 'react-router-dom'
 import {DeviceInfo} from './DevicesPage'
