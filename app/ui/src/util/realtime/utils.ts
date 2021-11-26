@@ -50,11 +50,13 @@ export const getMinAndMax = (arr: number[]): MinAndMax => {
 const normalize = (arr: number[], minAndMax: MinAndMax, inverse = false) => {
   const {max, min} = minAndMax
   const dist = max - min
-  if (!inverse) {
-    return arr.map((x) => (x - min) / dist)
-  } else {
-    return arr.map((x) => x * dist + min)
-  }
+  const len = arr.length
+  const newArr = new Array(len)
+
+  if (!inverse) for (let i = len; i--; ) newArr[i] = (arr[i] - min) / dist
+  else for (let i = len; i--; ) newArr[i] = arr[i] * dist + min
+
+  return newArr
 }
 
 /** simplify that has data normalization implemented */
