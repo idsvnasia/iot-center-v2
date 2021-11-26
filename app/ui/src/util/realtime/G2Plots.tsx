@@ -3,14 +3,13 @@ import {useCallback, useEffect, useRef} from 'react'
 import {Gauge, Plot} from '@antv/g2plot'
 import {
   DiagramEntryPoint,
-  useLastDiagramEntryPointGetter,
   simplifyDiagramEntryPointToMaxPoints,
   linearScale,
   useRafOnce,
   asArray,
   pushBigArray,
   applyRetention,
-  getMinMaxDataTime,
+  getMinAndMax,
 } from '.'
 
 const DAY_MILLIS = 24 * 60 * 60 * 1000
@@ -39,17 +38,97 @@ export type G2PlotOptionsNoData<T> = Omit<
   ConstructorParameters<new (...args: any[]) => Plot<T>>[1],
   'data' | 'percent'
 >
-export type G2PlotUpdater<PlotType> = (
-  newData:
-    | undefined
-    | DiagramEntryPoint
-    | DiagramEntryPoint[]
-    | (PlotType extends Gauge ? number : never)
+export type G2PlotUpdater = (
+  newData: undefined | DiagramEntryPoint | DiagramEntryPoint[]
 ) => void
 
 type G2PlotHook = {
   readonly element: JSX.Element
-  readonly update: G2PlotUpdater<Plot<any>>
+  readonly update: G2PlotUpdater
+}
+
+// TODO: replace with class, use setters/getters (only calculateSimplifyedData will be method to ensure user know it's Performance sensitive operation)
+/**
+ * state management for G2Plot-realtime, ensures caching for rerendering
+ */
+const createG2PlotData = () => {
+  let data: DiagramEntryPoint[] | undefined = undefined
+  let retentionTimeMs = Infinity
+  const cache = new Map<number, any>()
+
+  const applyRetentionOnData = () => {
+    if (!data) return
+    const l0 = data.length
+    applyRetention(data, retentionTimeMs)
+    const l1 = data.length
+    if (l0 !== l1) cache.clear()
+  }
+
+  const updateData = (newData: DiagramEntryPoint[] | undefined) => {
+    if (newData === undefined) data = undefined
+    else {
+      if (data === undefined) data = []
+      pushBigArray(data, newData)
+    }
+    applyRetentionOnData()
+    cache.clear()
+  }
+
+  const getRetentionTimeMs = () => retentionTimeMs
+
+  const getRetentionUsed = () =>
+    retentionTimeMs !== Infinity && retentionTimeMs > 0
+
+  const setRetention = (ms: number) => {
+    retentionTimeMs = ms
+    applyRetentionOnData()
+  }
+
+  let cacheId = 0
+  const cached = <TReturn,>(fnc: () => TReturn) => {
+    const key = cacheId++
+
+    return () => {
+      if (!cache.has(key)) cache.set(key, fnc())
+      return cache.get(key) as TReturn
+    }
+  }
+
+  const calculateSimplifyedData = cached(() =>
+    data
+      ? simplifyDiagramEntryPointToMaxPoints(data as DiagramEntryPoint[])
+      : []
+  )
+
+  const getDataTimeMinMax = cached(() =>
+    data?.length ? getMinAndMax(data.map((x) => x.time)) : undefined
+  )
+
+  const getLatestDataPoint = cached(() => {
+    const minMax = getDataTimeMinMax()
+    if (!minMax || !data) return undefined
+    const {max} = minMax
+    return data.find((x) => x.time === max)
+  })
+
+  const getMask = cached(() => {
+    if (!data) return ''
+    if (data.some((x) => x.time < Date.now() - 3 * DAY_MILLIS)) return maskDate
+    if (data.some((x) => x.time < Date.now() - DAY_MILLIS)) return maskDateTime
+    return maskTime
+  })
+
+  return {
+    updateData,
+    calculateSimplifyedData,
+    getDataTimeMinMax,
+    getMask,
+    setRetention,
+    getLatestDataPoint,
+    applyRetentionOnData,
+    getRetentionTimeMs,
+    getRetentionUsed,
+  }
 }
 
 export const useG2Plot = (
@@ -57,31 +136,37 @@ export const useG2Plot = (
   opts?: Omit<ConstructorParameters<PlotConstructor>[1], 'data' | 'percent'>,
   retentionTimeMs = Infinity
 ): G2PlotHook => {
-  type PlotType = InstanceType<PlotConstructor>
-
-  // todo: use one ref for everything
-  const plotRef = useRef<PlotType>()
-  const dataRef = useRef<DiagramEntryPoint[] | number | undefined>()
-  const maskRef = useRef(maskTime)
-  const getLastPoint = useLastDiagramEntryPointGetter()
+  const plotRef = useRef<InstanceType<PlotConstructor>>()
+  const {
+    updateData,
+    calculateSimplifyedData,
+    getDataTimeMinMax,
+    getMask,
+    setRetention,
+    getLatestDataPoint,
+    getRetentionTimeMs,
+    getRetentionUsed,
+  } = useRef(createG2PlotData()).current
 
   const elementRef = useRef<HTMLDivElement>(null)
   const element = <div ref={elementRef} />
 
-  const retentionTimeRef = useRef(retentionTimeMs)
-  const retentionUsed = () =>
-    retentionTimeRef.current !== Infinity && retentionTimeRef.current > 0
-  const getSimplifyedData = () =>
-    simplifyDiagramEntryPointToMaxPoints(dataRef.current as DiagramEntryPoint[])
+  useEffect(() => setRetention(retentionTimeMs), [
+    setRetention,
+    retentionTimeMs,
+  ])
 
   const getPlotOptions = useCallback(() => {
-    const data = dataRef.current
     const now = Date.now()
 
-    const dataTimeMinMax = getMinMaxDataTime(data, getLastPoint)
+    const dataTimeMinMax = getDataTimeMinMax()
+    const data = calculateSimplifyedData()
+    const retentionUsed = getRetentionUsed()
+    const retentionTimeMs = getRetentionTimeMs()
+
     return {
       ...g2PlotDefaults,
-      ...(retentionUsed() ? {padding: [22, 28]} : {}),
+      ...(retentionUsed ? {padding: [22, 28]} : {}),
       ...opts,
       xAxis: {
         ...g2PlotDefaults?.xAxis,
@@ -89,9 +174,9 @@ export const useG2Plot = (
         ...(typeof dataTimeMinMax === 'object'
           ? {
               tickMethod: () =>
-                retentionUsed()
+                retentionUsed
                   ? linearScale(
-                      now - retentionTimeRef.current,
+                      now - retentionTimeMs,
                       dataTimeMinMax.max,
                       8
                     ).map(Math.round)
@@ -100,24 +185,30 @@ export const useG2Plot = (
                     ),
             }
           : {}),
-        ...(retentionUsed()
+        ...(retentionUsed
           ? {
-              min: now - retentionTimeRef.current,
+              min: now - retentionTimeMs,
               // tickMethod: 'wilkinson-extended',
               // tickMethod: 'time-cat',
             }
           : {}),
-        mask: maskRef.current,
+        mask: getMask(),
         ...opts?.xAxis,
       },
-      ...(typeof data === 'number' ? {percent: data} : {}),
-      ...(Array.isArray(data) ? {data: getSimplifyedData()} : {}),
+      ...(ctor !== Gauge
+        ? {data}
+        : {percent: getLatestDataPoint()?.value ?? 0}),
     }
-  }, [opts, getLastPoint])
-
-  useEffect(() => {
-    retentionTimeRef.current = retentionTimeMs
-  }, [retentionTimeMs])
+  }, [
+    opts,
+    ctor,
+    calculateSimplifyedData,
+    getDataTimeMinMax,
+    getLatestDataPoint,
+    getMask,
+    getRetentionTimeMs,
+    getRetentionUsed,
+  ])
 
   useEffect(() => {
     if (!elementRef.current) return
@@ -136,47 +227,17 @@ export const useG2Plot = (
   const invalidate = useRafOnce(
     useRef(() => {
       // todo: don't redraw when window not visible
-      const data = dataRef.current
-
-      if (data === undefined) {
-        if (ctor === Gauge) {
-          plotRef.current?.changeData(0)
-        } else {
-          plotRef.current?.changeData?.([])
-        }
-      } else if (typeof data === 'number') plotRef.current?.changeData?.(data)
-      else plotRef.current?.changeData?.(getSimplifyedData())
+      plotRef.current?.changeData?.(
+        ctor === Gauge
+          ? getLatestDataPoint()?.value ?? 0
+          : calculateSimplifyedData()
+      )
     }).current
   )
 
-  const updateMask = () => {
-    if (!Array.isArray(dataRef.current)) return false
-
-    const prevMask = maskRef.current
-
-    if (dataRef.current.some((x) => x.time < Date.now() - 3 * DAY_MILLIS))
-      maskRef.current = maskDate
-    else if (dataRef.current.some((x) => x.time < Date.now() - DAY_MILLIS))
-      maskRef.current = maskDateTime
-    else maskRef.current = maskTime
-
-    return prevMask !== maskRef.current
-  }
-
-  const update: G2PlotUpdater<PlotType> = (newData) => {
-    if (newData === undefined || typeof newData === 'number') {
-      getLastPoint.reset()
-      dataRef.current = newData
-    } else if (ctor === Gauge)
-      dataRef.current = getLastPoint(asArray(newData))?.value
-    else if (Array.isArray(dataRef.current))
-      pushBigArray(dataRef.current, asArray(newData))
-    else dataRef.current = asArray(newData)
-
-    if (Array.isArray(dataRef.current))
-      applyRetention(dataRef.current, retentionTimeRef.current)
-
-    updateMask()
+  const update: G2PlotUpdater = (newData) => {
+    // TODO: don't store all rows for gauge
+    updateData(newData ? asArray(newData) : undefined)
 
     if (ctor === Gauge) invalidate()
     else redraw()
@@ -190,7 +251,7 @@ export const useG2Plot = (
 type G2PlotParams = {
   type: PlotConstructor
   options?: G2PlotOptionsNoData<any>
-  onUpdaterChange: (updater: G2PlotUpdater<Plot<any>>) => void
+  onUpdaterChange: (updater: G2PlotUpdater) => void
   retentionTimeMs?: number
 }
 

@@ -448,9 +448,9 @@ const RealTimePage: FunctionComponent<
 
   const [subscriptions, setSubscriptions] = useState<RealtimeSubscription[]>([])
   // object which contains functions that updates graphs outside of react state
-  type Updaters<T> = Record<string, G2PlotUpdater<T>>
-  const updatersGaugeRef = useRef<Updaters<Gauge>>({})
-  const updatersLineRef = useRef<Updaters<Line>>({})
+  type Updaters = Record<string, G2PlotUpdater>
+  const updatersGaugeRef = useRef<Updaters>({})
+  const updatersLineRef = useRef<Updaters>({})
 
   const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
 
@@ -507,7 +507,7 @@ const RealTimePage: FunctionComponent<
   const clearData = useRef(() => {
     clearReceivedDataFields()
     for (const measurement of fields) {
-      updatersGaugeRef.current[measurement]?.(0)
+      updatersGaugeRef.current[measurement]?.(undefined)
       updatersLineRef.current[measurement]?.(undefined)
       mapRef.current.clear()
     }

@@ -1,5 +1,4 @@
-import {useRef} from 'react'
-import {MinAndMax, getMinAndMax, simplify} from '.'
+import {simplify} from '.'
 
 export type DiagramEntryPoint = {
   value: number
@@ -101,44 +100,4 @@ export const applyRetention = (
       arr.splice(i, 1)
     }
   }
-}
-
-export const useLastDiagramEntryPointGetter = (): {
-  (points: DiagramEntryPoint[]): DiagramEntryPoint | undefined
-  reset: () => void
-} => {
-  const lastPointRef = useRef<DiagramEntryPoint>()
-
-  const getLastPoint = (points: DiagramEntryPoint[]) => {
-    if (!points.length) return lastPointRef.current
-    if (!lastPointRef.current) lastPointRef.current = points[0]
-
-    for (const p of points) {
-      if (lastPointRef.current.time < p.time) {
-        lastPointRef.current = p
-      }
-    }
-
-    return lastPointRef.current
-  }
-
-  getLastPoint.reset = () => {
-    lastPointRef.current = undefined
-  }
-
-  return getLastPoint
-}
-
-export const getMinMaxDataTime = (
-  data: number | DiagramEntryPoint[] | undefined,
-  getLastPoint: ReturnType<typeof useLastDiagramEntryPointGetter>
-): MinAndMax | undefined => {
-  if (data === undefined) return undefined
-  if (typeof data === 'number') {
-    const time = getLastPoint([])?.time
-    if (time) return {min: time, max: time}
-    return undefined
-  }
-  if (!data.length) return undefined
-  return getMinAndMax(data.map((x) => x.time))
 }
