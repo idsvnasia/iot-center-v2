@@ -1,7 +1,6 @@
 import React, {useEffect, useRef} from 'react'
 import {format, isFormatString} from '../format'
-import {useRafOnce} from '../realtimeUtils'
-
+import {useRafOnce} from '../realtime'
 
 /*
   for updating svg from inkskape:
@@ -12,7 +11,13 @@ import {useRafOnce} from '../realtimeUtils'
 */
 
 // TODO: add number formating (decimals etc) to formater, formater will output text like ---.-- when number is missing as a placeholder, remove replace("undefined", "") and formating in RealTimePage
-export const useRelatimeSVG = (svgElement: JSX.Element) => {
+export const useRelatimeSVG = (
+  svgElement: JSX.Element
+): {
+  factoryElement: JSX.Element
+  updateFactory: (data: Record<string, number | string>) => void
+  clearFactory: () => void
+} => {
   const formatableElementsRef = useRef<{el: Element; formatString: string}[]>(
     []
   )
@@ -21,7 +26,10 @@ export const useRelatimeSVG = (svgElement: JSX.Element) => {
   const update = useRafOnce(() => {
     for (const {el, formatString} of formatableElementsRef.current) {
       try {
-        el.textContent = format(formatString, fieldsRef.current).replace("undefined", "")
+        el.textContent = format(formatString, fieldsRef.current).replace(
+          'undefined',
+          ''
+        )
       } catch (e) {
         console.error(e)
       }
@@ -40,13 +48,9 @@ export const useRelatimeSVG = (svgElement: JSX.Element) => {
 
   const elementRef = useRef<HTMLDivElement>(null)
 
-  const factoryElement = (
-    <div ref={elementRef}>
-      {svgElement}
-    </div>
-  )
+  const factoryElement = <div ref={elementRef}>{svgElement}</div>
 
-  const reset = () =>{
+  const reset = () => {
     for (const {el, formatString} of formatableElementsRef.current) {
       el.textContent = formatString
     }
@@ -54,11 +58,11 @@ export const useRelatimeSVG = (svgElement: JSX.Element) => {
   }
 
   useEffect(() => {
-    formatableElementsRef.current = [];
+    formatableElementsRef.current = []
 
     const root = elementRef.current
     const rec = (el: Element | null) => {
-      if (!el) return;
+      if (!el) return
       const child = Array.from(el.children)
       child.forEach(rec)
       if (
