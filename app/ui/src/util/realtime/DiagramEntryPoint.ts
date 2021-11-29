@@ -101,3 +101,17 @@ export const applyRetention = (
     }
   }
 }
+
+export const getDiagramEntyPointLatestValues = (
+  arr: DiagramEntryPoint[]
+): DiagramEntryPoint[] => {
+  if (!arr.length) return []
+  const latests = new Map<string, DiagramEntryPoint>()
+  for (let i = arr.length; i--; ) {
+    const x = arr[i]
+    const {key, time} = x
+    const latest = latests.get(key)
+    if (!latest || latest.time < time) latests.set(key, x)
+  }
+  return Array.from(latests.entries()).map((x) => x[1])
+}

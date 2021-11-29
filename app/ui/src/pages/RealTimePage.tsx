@@ -124,7 +124,8 @@ const measurementsDefinitions: Record<string, MeasurementDefinition> = {
   },
 }
 const fields = Object.keys(measurementsDefinitions)
-const fieldsAll = fields.concat('Lat', 'Lon')
+const fieldsLatLon = ['Lat', 'Lon']
+const fieldsAll = fields.concat(...fieldsLatLon)
 
 const gaugesPlotOptions: Record<
   string,
@@ -582,7 +583,7 @@ const RealTimePage: FunctionComponent<
   }, [])
 
   /*
-    Rendering graphs with minilibrary written in util/realtimeUtils.tsx
+    Rendering graphs with minilibrary written in util/realtime/
     This time, data isn't pass by state but by calling callback (got by onUpdaterChange) 
     which allows us to update graph more frequently with better performance.
     All graphs has to be rendered whole time because we need to have updater function from it. (so we use display 'none' instead of conditional rendering)
