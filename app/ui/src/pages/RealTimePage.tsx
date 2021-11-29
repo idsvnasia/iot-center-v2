@@ -8,12 +8,12 @@ import {
   DiagramEntryPoint,
   G2Plot,
   G2PlotUpdater,
-  getDiagramEntyPointLatestValues,
   TimePoint,
   useMap,
   useWebSocket,
-  SvgFactory,
   useRelatimeSVG,
+  SvgFactory,
+  getDiagramEntyPointLatestValues,
 } from '../util/realtime'
 import {VIRTUAL_DEVICE} from '../App'
 import {RouteComponentProps} from 'react-router-dom'
@@ -499,15 +499,12 @@ const RealTimePage: FunctionComponent<
 
     const latest = getDiagramEntyPointLatestValues(data)
     const formatedLatest = latest.map((x) => {
-      const decimalPlaces =
-        x.key === 'Lat' || x.key === 'Lon'
-          ? 5
-          : measurementsDefinitions[x.key]?.decimalPlaces ?? 0
+      let decimalPlaces = measurementsDefinitions[x.key]?.decimalPlaces ?? 0
+      if (x.key === 'Lat' || x.key === 'Lon') decimalPlaces = 5
+
       return {...x, value: `${x.value.toFixed(decimalPlaces ?? 0)}`}
     })
-    updateFactory(
-      Object.fromEntries(formatedLatest.map(({key, value}) => [key, value]))
-    )
+    svgUpdate(formatedLatest)
 
     for (const field of fields) {
       const lineData = data.filter(({key}) => key === field)
@@ -538,8 +535,8 @@ const RealTimePage: FunctionComponent<
       updatersGaugeRef.current[measurement]?.(undefined)
       updatersLineRef.current[measurement]?.(undefined)
       mapRef.current.clear()
-      clearFactory()
-      updateFactory({deviceId: deviceIdRef.current})
+      svgClear()
+      svgUpdate({deviceId: deviceIdRef.current})
     }
   }).current
 
@@ -802,7 +799,7 @@ const RealTimePage: FunctionComponent<
       spin={loading}
       forceShowScroll={true}
     >
-      <Card style={{marginBottom: 24}}>{factoryElement}</Card>
+      <Card style={{marginBottom: 24}}>{svgElement}</Card>
       <div style={receivedDataFields.length ? {} : {display: 'none'}}>
         {gauges}
         {plotDivider}
