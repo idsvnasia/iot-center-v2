@@ -12,6 +12,8 @@ import {
   TimePoint,
   useMap,
   useWebSocket,
+  SvgFactory,
+  useRelatimeSVG,
 } from '../util/realtime'
 import {VIRTUAL_DEVICE} from '../App'
 import {RouteComponentProps} from 'react-router-dom'
@@ -24,8 +26,6 @@ import {Row, Col, Collapse, Empty, Divider} from 'antd'
 import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {colorLink, colorPrimary} from '../styles/colors'
-import {useRelatimeSVG} from '../util/svg-realtime'
-import {ReactComponent as SvgFactory} from '../util/svg-realtime/IoT_Center_Diagram_v2.svg'
 
 /*
  ********************************************
