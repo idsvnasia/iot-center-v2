@@ -18,6 +18,13 @@ const maskTime = 'hh:mm:ss'
 const maskDate = 'DD/MM/YY'
 const maskDateTime = `${maskDate} ${maskTime} `
 
+/**
+ * helper for throwing error from expression
+ */
+const throwReturn = <T,>(msg: string): NonNullable<T> => {
+  throw new Error(msg)
+}
+
 const g2PlotDefaults = {
   data: [],
   percent: 0,
@@ -42,93 +49,9 @@ export type G2PlotUpdater = (
   newData: undefined | DiagramEntryPoint | DiagramEntryPoint[]
 ) => void
 
-type G2PlotHook = {
+export type G2PlotHook = {
   readonly element: JSX.Element
   readonly update: G2PlotUpdater
-}
-
-// TODO: replace with class, use setters/getters (only calculateSimplifyedData will be method to ensure user know it's Performance sensitive operation)
-/**
- * state management for G2Plot-realtime, ensures caching for rerendering
- */
-const createG2PlotData = () => {
-  let data: DiagramEntryPoint[] | undefined = undefined
-  let retentionTimeMs = Infinity
-  const cache = new Map<number, any>()
-
-  const applyRetentionOnData = () => {
-    if (!data) return
-    const l0 = data.length
-    applyRetention(data, retentionTimeMs)
-    const l1 = data.length
-    if (l0 !== l1) cache.clear()
-  }
-
-  const updateData = (newData: DiagramEntryPoint[] | undefined) => {
-    if (newData === undefined) data = undefined
-    else {
-      if (data === undefined) data = []
-      pushBigArray(data, newData)
-    }
-    applyRetentionOnData()
-    cache.clear()
-  }
-
-  const getRetentionTimeMs = () => retentionTimeMs
-
-  const getRetentionUsed = () =>
-    retentionTimeMs !== Infinity && retentionTimeMs > 0
-
-  const setRetention = (ms: number) => {
-    retentionTimeMs = ms
-    applyRetentionOnData()
-  }
-
-  let cacheId = 0
-  const cached = <TReturn,>(fnc: () => TReturn) => {
-    const key = cacheId++
-
-    return () => {
-      if (!cache.has(key)) cache.set(key, fnc())
-      return cache.get(key) as TReturn
-    }
-  }
-
-  const calculateSimplifyedData = cached(() =>
-    data
-      ? simplifyDiagramEntryPointToMaxPoints(data as DiagramEntryPoint[])
-      : []
-  )
-
-  const getDataTimeMinMax = cached(() =>
-    data?.length ? getMinAndMax(data.map((x) => x.time)) : undefined
-  )
-
-  const getLatestDataPoint = cached(() => {
-    const minMax = getDataTimeMinMax()
-    if (!minMax || !data) return undefined
-    const {max} = minMax
-    return data.find((x) => x.time === max)
-  })
-
-  const getMask = cached(() => {
-    if (!data) return ''
-    if (data.some((x) => x.time < Date.now() - 3 * DAY_MILLIS)) return maskDate
-    if (data.some((x) => x.time < Date.now() - DAY_MILLIS)) return maskDateTime
-    return maskTime
-  })
-
-  return {
-    updateData,
-    calculateSimplifyedData,
-    getDataTimeMinMax,
-    getMask,
-    setRetention,
-    getLatestDataPoint,
-    applyRetentionOnData,
-    getRetentionTimeMs,
-    getRetentionUsed,
-  }
 }
 
 export const useG2Plot = (
@@ -137,32 +60,24 @@ export const useG2Plot = (
   retentionTimeMs = Infinity
 ): G2PlotHook => {
   const plotRef = useRef<InstanceType<PlotConstructor>>()
-  const {
-    updateData,
-    calculateSimplifyedData,
-    getDataTimeMinMax,
-    getMask,
-    setRetention,
-    getLatestDataPoint,
-    getRetentionTimeMs,
-    getRetentionUsed,
-  } = useRef(createG2PlotData()).current
+  const state = useRef(new G2PlotState()).current
 
   const elementRef = useRef<HTMLDivElement>(null)
   const element = <div ref={elementRef} />
 
-  useEffect(() => setRetention(retentionTimeMs), [
-    setRetention,
-    retentionTimeMs,
-  ])
+  useEffect(() => {
+    state.retentionTimeMs = retentionTimeMs
+  }, [retentionTimeMs, state])
 
   const getPlotOptions = useCallback(() => {
     const now = Date.now()
 
-    const dataTimeMinMax = getDataTimeMinMax()
-    const data = calculateSimplifyedData()
-    const retentionUsed = getRetentionUsed()
-    const retentionTimeMs = getRetentionTimeMs()
+    const {dataTimeMinMax, retentionUsed, retentionTimeMs, mask} = state
+
+    const dataObj =
+      ctor !== Gauge
+        ? {data: state.calculateSimplifyedData()}
+        : {percent: state.latestDataPoint?.value ?? 0}
 
     return {
       ...g2PlotDefaults,
@@ -192,23 +107,12 @@ export const useG2Plot = (
               // tickMethod: 'time-cat',
             }
           : {}),
-        mask: getMask(),
+        mask,
         ...opts?.xAxis,
       },
-      ...(ctor !== Gauge
-        ? {data}
-        : {percent: getLatestDataPoint()?.value ?? 0}),
+      ...dataObj,
     }
-  }, [
-    opts,
-    ctor,
-    calculateSimplifyedData,
-    getDataTimeMinMax,
-    getLatestDataPoint,
-    getMask,
-    getRetentionTimeMs,
-    getRetentionUsed,
-  ])
+  }, [opts, ctor, state])
 
   useEffect(() => {
     if (!elementRef.current) return
@@ -226,18 +130,16 @@ export const useG2Plot = (
 
   const invalidate = useRafOnce(
     useRef(() => {
-      // todo: don't redraw when window not visible
       plotRef.current?.changeData?.(
         ctor === Gauge
-          ? getLatestDataPoint()?.value ?? 0
-          : calculateSimplifyedData()
+          ? state.latestDataPoint?.value ?? 0
+          : state.calculateSimplifyedData()
       )
     }).current
   )
 
   const update: G2PlotUpdater = (newData) => {
-    // TODO: don't store all rows for gauge
-    updateData(newData ? asArray(newData) : undefined)
+    state.updateData(newData ? asArray(newData) : undefined)
 
     if (ctor === Gauge) invalidate()
     else redraw()
@@ -266,4 +168,180 @@ export const G2Plot: React.FC<G2PlotParams> = (params) => {
   }, [params, update])
 
   return <>{element}</>
+}
+
+/**
+ * state management for G2Plot-realtime, ensures caching for rerendering
+ */
+class G2PlotState {
+  private _data: DiagramEntryPoint[] | undefined = undefined
+  private _retentionTimeMs = Infinity
+  private _cache: Cache<G2PlotState>
+
+  get retentionTimeMs(): number {
+    return this._retentionTimeMs
+  }
+
+  set retentionTimeMs(ms: number) {
+    this._retentionTimeMs = ms
+    this.applyRetentionOnData()
+  }
+
+  get retentionUsed() {
+    return this._retentionTimeMs !== Infinity && this._retentionTimeMs > 0
+  }
+
+  applyRetentionOnData() {
+    if (!this._data) return
+    const l0 = this._data.length
+    applyRetention(this._data, this._retentionTimeMs)
+    const l1 = this._data.length
+    if (l0 !== l1) this._cache.clear()
+  }
+
+  updateData(newData: DiagramEntryPoint[] | undefined) {
+    if (newData === undefined) this._data = undefined
+    else {
+      if (this._data === undefined) this._data = []
+      pushBigArray(this._data, newData)
+    }
+    this.applyRetentionOnData()
+  }
+
+  calculateSimplifyedData() {
+    return this._data ? simplifyDiagramEntryPointToMaxPoints(this._data) : []
+  }
+
+  get dataTimeMinMax() {
+    return this._data?.length
+      ? getMinAndMax(this._data.map((x) => x.time))
+      : undefined
+  }
+
+  get latestDataPoint() {
+    const minMax = this.dataTimeMinMax
+    if (!minMax || !this._data) return undefined
+    const {max} = minMax
+    return this._data.find((x) => x.time === max)
+  }
+
+  get mask() {
+    if (!this._data) return ''
+    if (this._data.some((x) => x.time < Date.now() - 3 * DAY_MILLIS))
+      return maskDate
+    if (this._data.some((x) => x.time < Date.now() - DAY_MILLIS))
+      return maskDateTime
+    return maskTime
+  }
+
+  constructor() {
+    this._cache = new Cache<G2PlotState>(this)
+      .cache('calculateSimplifyedData')
+      .cache('mask')
+      .cache('dataTimeMinMax')
+      .cache('latestDataPoint')
+      .clearOn('updateData')
+  }
+}
+
+type MethodWithoudPars<T> = {
+  [P in keyof T]: T[P] extends () => any ? P : never
+}[keyof T]
+type NonMethodProps<T> = {
+  [P in keyof T]: T[P] extends (...args: any[]) => any ? never : P
+}[keyof T]
+
+class Cache<T> {
+  private _obj: T
+  private _cache = new Map<string, any>()
+  private _cached<TReturn>(fnc: (() => TReturn) | undefined, key: string) {
+    if (!fnc) throw new Error('function must be defined')
+    if (typeof fnc !== 'function')
+      throw new Error(`expected function, got ${fnc}`)
+    if (fnc.length !== 0)
+      throw new Error(`only functions without arguments currently supported`)
+    ;(this.cachedKeys as string[]).push(key)
+
+    return () => {
+      if (!this._cache.has(key)) this._cache.set(key, fnc())
+      return this._cache.get(key) as TReturn
+    }
+  }
+
+  private _clearOn<TArgs extends any[], TReturn>(
+    fnc: (...args: TArgs) => TReturn
+  ) {
+    return (...args: TArgs) => {
+      this.clear()
+      return fnc(...args)
+    }
+  }
+
+  private _getDescriptorFor(key: keyof T) {
+    return (
+      Object.getOwnPropertyDescriptor(this._obj, key) ??
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(this._obj), key) ??
+      throwReturn(`property or method ${key} not found`)
+    )
+  }
+
+  private _overrideDescriptor(
+    key: keyof T,
+    newDesc: Partial<PropertyDescriptor>
+  ) {
+    const desc = this._getDescriptorFor(key)
+    Object.defineProperties(this._obj, {
+      [key]: {
+        ...desc,
+        ...newDesc,
+      },
+    })
+  }
+
+  public readonly cachedKeys: readonly string[] = []
+
+  public clear() {
+    this._cache.clear()
+  }
+
+  /**
+   * calls of this getters/methods will be cached
+   * doesn't support methods with parameters!
+   */
+  public cache(key: MethodWithoudPars<T> | NonMethodProps<T>) {
+    const desc = this._getDescriptorFor(key)
+
+    this._overrideDescriptor(
+      key,
+      desc.get
+        ? {get: this._cached(desc.get.bind(this._obj), `get.${key}`)}
+        : desc.value
+        ? {value: this._cached(desc.value.bind(this._obj), `fnc.${key}`)}
+        : throwReturn<any>(`${key} is not property nor method`)
+    )
+
+    return this
+  }
+
+  /**
+   * clear whole cache when given method/setter is called
+   */
+  public clearOn(key: keyof T) {
+    const desc = this._getDescriptorFor(key)
+
+    this._overrideDescriptor(
+      key,
+      desc.set
+        ? {set: this._clearOn(desc.set.bind(this._obj))}
+        : desc.value
+        ? {value: this._clearOn(desc.value.bind(this._obj))}
+        : throwReturn<any>(`${key} is not property nor method`)
+    )
+
+    return this
+  }
+
+  constructor(obj: T) {
+    this._obj = obj
+  }
 }
