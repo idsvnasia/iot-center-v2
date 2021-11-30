@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom'
 import App from './App'
 import * as serviceWorker from './serviceWorker'
 import {BrowserRouter} from 'react-router-dom'
+
+// allow rotation of markers
+import './util/realtime/rotateLeafletMarker'
 // ! important to load leaflet CSS to fix tile positioning !
 import 'leaflet/dist/leaflet.css'
 // ! fixes leaflet marker

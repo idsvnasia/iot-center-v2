@@ -3,6 +3,10 @@ import * as leaflet from 'leaflet'
 import {AntPath, LatLng} from 'leaflet-ant-path'
 import {pushBigArray} from './utils'
 
+const calculateAngleFromLatlon = (p1: LatLng, p2: LatLng) =>
+  360 -
+  ((Math.atan2(p2[0] - p1[0], p2[1] - p1[1]) * (180 / Math.PI) + 360) % 360)
+
 /**
  * [lat, lng, time]
  */
@@ -55,6 +59,7 @@ export class TimeMap {
 
     if (this._points.length) {
       const last = (this._points[this._points.length - 1] as any) as LatLng
+      const last2 = (this._points[this._points.length - 2] as any) as LatLng
       try {
         // TODO: don't do small movement with animation or don't do them at all
         this._map.setView(last as any, this._map.getZoom(), {
@@ -64,6 +69,10 @@ export class TimeMap {
           },
         } as any)
         this._marker.setLatLng(last)
+        if (last2)
+          this._marker.setRotationAngle?.(
+            calculateAngleFromLatlon(last, last2) - 90
+          )
       } catch (e: any) {
         // manipulating map properties can throw an error when map no longer exist
         console.warn(
@@ -105,16 +114,23 @@ export class TimeMap {
   private _marker?: leaflet.Marker
   private _path?: AntPath
 
+  private _zoom = 13
+  // TODO: use this to set zoom in realtime based on live/past
+  public setZoom(level: number): void {
+    this._zoom = level
+    this._map?.setZoom(level)
+  }
+
   public setContiner(container: HTMLElement | undefined): void {
     if (this._map) this._map.remove()
     if (!container) return
 
-    const point: [number, number] = this._points?.length
+    const point: LatLng = this._points?.length
       ? (this._points[this._points.length - 1] as any)
       : [51.4921374, -0.1928784]
     const map = leaflet
       .map(container, {scrollWheelZoom: false, dragging: this._dragable})
-      .setView(point, 13)
+      .setView(point, this._zoom)
 
     leaflet
       .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -125,7 +141,16 @@ export class TimeMap {
       .addTo(map)
 
     this._map = map
-    this._marker = leaflet.marker([0, 0]).addTo(map)
+    this._marker = leaflet
+      .marker([0, 0], {
+        icon: new leaflet.Icon({
+          iconUrl: '/car.png',
+          shadowUrl: '',
+          iconSize: [60 / 3, 179 / 3],
+          iconAnchor: [60 / 6, 179 / 6],
+        }),
+      })
+      .addTo(map)
     this._path = new AntPath([]).addTo(map)
 
     // fix for dynamic layouts
