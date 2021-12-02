@@ -324,7 +324,7 @@ const giraffeTableToDiagramEntryPoints = (
   {
     let length = data.length
     for (let i = data.length; i--; ) {
-      if (data[i].value === null || data[i].time === null) {
+      if (data[i].value == null || data[i].time == null) {
         length--
         data[i] = data[length]
       }
