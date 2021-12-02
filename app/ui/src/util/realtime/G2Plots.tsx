@@ -170,6 +170,7 @@ export const G2Plot: React.FC<G2PlotParams> = (params) => {
   return <>{element}</>
 }
 
+// TODO: data should be stored and managed globaly -> no duplicit data/calcualtions (when same data used in more plots), we can store data globaly and decide what plots to draw later (user can modify dasboard without need to fetch again)
 /**
  * state management for G2Plot-realtime, ensures caching for rerendering
  */

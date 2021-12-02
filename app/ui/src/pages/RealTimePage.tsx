@@ -127,6 +127,7 @@ const fields = Object.keys(measurementsDefinitions)
 const fieldsLatLon = ['Lat', 'Lon']
 const fieldsAll = fields.concat(...fieldsLatLon)
 
+/** gauges style based on mesurement definitions */
 const gaugesPlotOptions: Record<
   string,
   Omit<GaugeOptions, 'percent'>
@@ -195,6 +196,7 @@ const gaugesPlotOptions: Record<
   )
 )
 
+/** line plots style based on mesurement definitions */
 const linePlotOptions: Record<
   string,
   Omit<LineOptions, 'data'>
@@ -212,6 +214,16 @@ const linePlotOptions: Record<
   ])
 )
 
+/** Returns list of keys present in data. */
+const getFieldsOfData = (data: DiagramEntryPoint[]) => {
+  const keysObj: Record<string, true> = {}
+  for (let i = data.length; i--; ) {
+    const entry = data[i]
+    keysObj[entry.key] = true
+  }
+  return Object.getOwnPropertyNames(keysObj)
+}
+
 // #region Realtime
 
 /** Data returned from websocket in line-protocol-like shape */
@@ -222,8 +234,9 @@ type RealtimePoint = {
   timestamp: string
 }
 type RealtimeSubscription = {
+  /** influxdb measurement value */
   measurement: string
-  /** all tags are in format 'tagName=tagValue'. Point is sent to client when matches all tags. */
+  /** tag format 'tagName=tagValue'. Point is sent to client when matches all tags. */
   tags: string[]
 }
 
@@ -233,18 +246,19 @@ const host =
     : window.location.host
 const wsAddress = `ws://${host}/mqtt`
 
-const milisTimeLength = Date.now().toString().length
+/** length of unix time with milliseconds precision */
+const MILLIS_TIME_LENGTH = 13
 /** Transform timestamps to millis for point. (Points can have different precission) */
 const pointTimeToMillis = (p: RealtimePoint): RealtimePoint => ({
   ...p,
   timestamp: p.timestamp
-    .substr(0, milisTimeLength)
-    .padEnd(milisTimeLength, '0'),
+    .substr(0, MILLIS_TIME_LENGTH)
+    .padEnd(MILLIS_TIME_LENGTH, '0'),
 })
 
 /**
- * When subscriptions present creates conection
- * to servers broker.js via websocket and subscribes for data.
+ * subscribes for data to servers broker.js via websocket
+ * when any subscription present
  */
 const useRealtimeData = (
   subscriptions: RealtimeSubscription[],
@@ -263,7 +277,7 @@ const useRealtimeData = (
   useWebSocket(wsInit, wsAddress, !!subscriptions.length)
 }
 
-// transformations for both InfluxDB and Realtime sources so we can use them same way
+// transformations for both InfluxDB and Realtime sources so we can use them same way independently of the source
 
 /** transformation for realtime data returned by websocket */
 const realtimePointToDiagrameEntryPoint = (points: RealtimePoint[]) => {
@@ -286,14 +300,14 @@ const realtimePointToDiagrameEntryPoint = (points: RealtimePoint[]) => {
 const giraffeTableToDiagramEntryPoints = (
   table: GiraffeTable | undefined,
   tags: string[]
-): DiagramEntryPoint[] | undefined => {
-  if (!table) return
+): DiagramEntryPoint[] => {
+  if (!table) return []
   const length = table.length
   const timeCol =
     table.getColumn('_time', 'number') ||
     table.getColumn('_start', 'number') ||
     table.getColumn('_stop', 'number')
-  if (!timeCol) return
+  if (!timeCol) return []
 
   const data: DiagramEntryPoint[] = Array(length * tags.length)
 
@@ -363,7 +377,7 @@ const diagramEntryPointsToMapTimePoints = (
 
 /**
  * definitions for time select. (Live options)
- * realtime options contains retention to be used in graphs
+ * realtime options contains retention to be used in plots
  */
 const timeOptionsRealtime: {
   label: string
@@ -410,14 +424,14 @@ const RealTimePage: FunctionComponent<
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
   const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
 
-  // resetXDomain removed, doesn't make sense to zoom graph in realtime
+  // resetXDomain removed, doesn't make sense to zoom plot in realtime
 
   const isVirtualDevice = deviceId === VIRTUAL_DEVICE
   const measurementsTable = deviceData?.measurementsTable
 
   // unlike before, data don't have to be in react state.
   // we have to create some way to track what data we have
-  // received so we can hide other graphs
+  // received so we can hide plots without data
   const [receivedDataFields, setReceivedDataFields] = useState<string[]>([])
   const noDataFields = fields.filter(
     (x) => !receivedDataFields.some((y) => y === x)
@@ -438,7 +452,7 @@ const RealTimePage: FunctionComponent<
 
   // #region realtime
 
-  const {mapElement, mapRef} = useMap()
+  const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
 
   // Default time selected to Past when mqtt not configured
   useEffect(() => {
@@ -447,17 +461,18 @@ const RealTimePage: FunctionComponent<
     }
   }, [mqttEnabled])
 
+  // We use hook instead of component so we can bypass react and have full control of rendering plots
+  const {mapElement, mapRef} = useMap()
+  // Map view automatically follows last point when realtime so drag is not necessary
+  mapRef.current.setDragable(!isRealtime)
+
   const [subscriptions, setSubscriptions] = useState<RealtimeSubscription[]>([])
-  // object which contains functions that updates graphs outside of react state
+  // updaters are functions that updates plots outside of react state
   type Updaters = Record<string, G2PlotUpdater>
   const updatersGaugeRef = useRef<Updaters>({})
   const updatersLineRef = useRef<Updaters>({})
 
-  const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
-
-  mapRef.current.setDragable(!isRealtime)
-
-  /** Graph is showed with fixed time range if set */
+  /** plot is showed with fixed time range if set */
   const retentionTime = isRealtime
     ? timeOptionsRealtime[
         timeOptionsRealtime.findIndex((x) => x.value === timeStart)
@@ -473,13 +488,9 @@ const RealTimePage: FunctionComponent<
     )
   }, [deviceId, isRealtime])
 
-  /** Propagate data to desired graphs and rerender them */
-  const updateData = useRef((data: DiagramEntryPoint[] | undefined) => {
-    if (data === undefined) return
-
-    updateReceivedDataFields(
-      fieldsAll.filter((field) => data.some((x) => x.key === field))
-    )
+  /** Push data to desired plots and rerender them */
+  const updateData = useRef((data: DiagramEntryPoint[]) => {
+    updateReceivedDataFields(getFieldsOfData(data))
 
     mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
 
@@ -489,6 +500,7 @@ const RealTimePage: FunctionComponent<
       const {min, max} = measurementsDefinitions[field]
       const gaugeData = lineData.map((x) => ({
         ...x,
+        // plot library uses data for gauges in [0,1] interval
         value: (x.value - min) / (max - min),
       }))
 
@@ -519,13 +531,10 @@ const RealTimePage: FunctionComponent<
   }, [isRealtime, clearData])
   useEffect(clearData, [deviceId, clearData])
 
-  // On measurementsTable is changed, we render it in graphs
+  // On measurementsTable is changed, we render it in plots
   useEffect(() => {
     clearData()
-    // TODO: somehow clearing data after update, need to be fixed
-    setTimeout(() => {
-      updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fieldsAll))
-    }, 100)
+    updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fieldsAll))
   }, [measurementsTable, updateData, clearData])
 
   // #endregion realtime
@@ -533,7 +542,7 @@ const RealTimePage: FunctionComponent<
   // fetch device configuration and data
   useEffect(() => {
     // we don't use fetchDeviceLastValues
-    //   Gauge graphs will handle last walue selection for us
+    //   Gauge plots will handle last walue selection for us
 
     const fetchData = async () => {
       setLoading(true)
@@ -583,10 +592,10 @@ const RealTimePage: FunctionComponent<
   }, [])
 
   /*
-    Rendering graphs with minilibrary written in util/realtime/
+    Rendering plots with minilibrary written in util/realtime/
     This time, data isn't pass by state but by calling callback (got by onUpdaterChange) 
-    which allows us to update graph more frequently with better performance.
-    All graphs has to be rendered whole time because we need to have updater function from it. (so we use display 'none' instead of conditional rendering)
+    which allows us to update plot more frequently with better performance.
+    All plots has to be rendered whole time because we need to have updater function from it. (so we use display 'none' instead of conditional rendering)
   */
   const renderGauge = (column: string) => (
     <G2Plot

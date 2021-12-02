@@ -7,10 +7,34 @@ const calculateAngleFromLatlon = (p1: LatLng, p2: LatLng) =>
   360 -
   ((Math.atan2(p2[0] - p1[0], p2[1] - p1[1]) * (180 / Math.PI) + 360) % 360)
 
+const EARTH_RADIUS_KM = 6371
+const latLonDist = (p1: LatLng, p2: LatLng) =>
+  Math.asin(
+    Math.sqrt(
+      Math.pow(
+        Math.sin(((p2[0] * Math.PI) / 180 - (p1[0] * Math.PI) / 180) / 2),
+        2
+      ) +
+        Math.cos(p1[0]) *
+          Math.cos(p2[0]) *
+          Math.pow(
+            Math.sin(((p2[1] * Math.PI) / 180 - (p1[1] * Math.PI) / 180) / 2),
+            2
+          )
+    )
+  ) *
+  EARTH_RADIUS_KM *
+  2
+
 /**
  * [lat, lng, time]
  */
 export type TimePoint = [number, number, number]
+
+// view will center on new point when new point is this far from last centered
+const VIEW_CENTERING_THRESHOLD_DISTANCE_KM = 0.01
+// view will center on point if this time passed from last centering
+const VIEW_CENTERING_THRESHOLD_MS = 10000
 
 export class TimeMap {
   private _points: TimePoint[] = []
@@ -49,6 +73,8 @@ export class TimeMap {
     this.rafHandle = requestAnimationFrame(this._update.bind(this))
   }
 
+  private _lastPoint?: LatLng
+  private _lastPointTime?: number
   private rafHandle = -1
   private _update() {
     if (!this._path || !this._map || !this._marker) return
@@ -61,13 +87,22 @@ export class TimeMap {
       const last = (this._points[this._points.length - 1] as any) as LatLng
       const last2 = (this._points[this._points.length - 2] as any) as LatLng
       try {
-        // TODO: don't do small movement with animation or don't do them at all
-        this._map.setView(last as any, this._map.getZoom(), {
-          animate: true,
-          pan: {
-            duration: 1,
-          },
-        } as any)
+        if (
+          !this._lastPoint ||
+          !this._lastPointTime ||
+          latLonDist(this._lastPoint, last) >
+            VIEW_CENTERING_THRESHOLD_DISTANCE_KM ||
+          this._lastPointTime < Date.now() - VIEW_CENTERING_THRESHOLD_MS
+        ) {
+          this._map.setView(last, this._map.getZoom(), {
+            animate: true,
+            pan: {
+              duration: 1,
+            },
+          } as any)
+          this._lastPoint = last
+          this._lastPointTime = Date.now()
+        }
         this._marker.setLatLng(last)
         if (last2)
           this._marker.setRotationAngle?.(
@@ -83,6 +118,7 @@ export class TimeMap {
       }
     } else {
       this._marker.setLatLng([0, 0])
+      this._lastPoint = undefined
     }
   }
 
@@ -106,6 +142,7 @@ export class TimeMap {
   }
 
   public setDragable(dragable: boolean): void {
+    if (this._dragable === dragable) return
     this._dragable = dragable
     if (this._map) this._map.options.dragging = dragable
   }
