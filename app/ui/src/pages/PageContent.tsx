@@ -44,7 +44,7 @@ const PageContent: FunctionComponent<PageContentProps> = (props) => (
       />
     ) : undefined}
     <div className="site-layout-background" style={{minHeight: 360}}>
-      <Spin spinning={props.spin}>{props.children}</Spin>
+      <Spin spinning={props.spin ?? false}>{props.children}</Spin>
     </div>
   </Layout.Content>
 )
