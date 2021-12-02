@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react'
+import React, {useCallback, useEffect, useRef} from 'react'
 import {format, isFormatString} from '../format'
 import {useRafOnce} from '.'
 
@@ -18,7 +18,7 @@ export type RealtimeSVGData =
 const isDiagramEntryPointsArray = (
   arr: any[] | {key: string; value: number | string}[]
 ): arr is {key: string; value: number | string}[] => {
-  return 'value' in arr[0]
+  return !!arr?.length && 'value' in arr[0]
 }
 
 // TODO: add number formating (decimals etc) to formater, formater will output text like ---.-- when number is missing as a placeholder, remove replace("undefined", "") and formating in RealTimePage
@@ -34,35 +34,40 @@ export const useRelatimeSVG = (
   )
   const fieldsRef = useRef<Record<string, number | string>>({})
 
-  const update = useRafOnce(() => {
-    for (const {el, formatString} of formatableElementsRef.current) {
-      try {
-        el.textContent = format(formatString, fieldsRef.current).replace(
-          'undefined',
-          ''
-        )
-      } catch (e) {
-        console.error(e)
+  const update = useRafOnce(
+    useCallback(() => {
+      for (const {el, formatString} of formatableElementsRef.current) {
+        try {
+          el.textContent = format(formatString, fieldsRef.current).replace(
+            'undefined',
+            ''
+          )
+        } catch (e) {
+          console.error(e)
+        }
       }
-    }
-  })
+    }, [])
+  )
 
-  const svgUpdate = (data: RealtimeSVGData) => {
-    let _data = data
-    if (Array.isArray(_data)) {
-      if (isDiagramEntryPointsArray(_data))
-        _data = Object.fromEntries(_data.map(({key, value}) => [key, value]))
-      else _data = Object.fromEntries(_data)
-    }
+  const svgUpdate = useCallback(
+    (data: RealtimeSVGData) => {
+      let _data = data
+      if (Array.isArray(_data)) {
+        if (isDiagramEntryPointsArray(_data))
+          _data = Object.fromEntries(_data.map(({key, value}) => [key, value]))
+        else _data = Object.fromEntries(_data)
+      }
 
-    fieldsRef.current = {...fieldsRef.current, ..._data}
-    update()
-  }
+      fieldsRef.current = {...fieldsRef.current, ..._data}
+      update()
+    },
+    [update]
+  )
 
-  const svgClear = () => {
+  const svgClear = useCallback(() => {
     fieldsRef.current = {}
     update()
-  }
+  }, [update])
 
   const elementRef = useRef<HTMLDivElement>(null)
 
