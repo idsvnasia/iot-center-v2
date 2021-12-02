@@ -773,8 +773,7 @@ const RealTimePage: FunctionComponent<
           Realtime Dashboard
           {isVirtualDevice ? (
             <Tooltip
-              // TODO: update text to fit Realtime Dashboard
-              title="This page writes temperature measurements for the last 7 days from an emulated device, the temperature is reported every minute."
+              title="This page is based on Dashboard page, it has two modes: past and live. Past data are received from influxdb and live data are sent directly from device by mqtt"
             >
               <InfoCircleFilled style={{fontSize: '1em', marginLeft: 5}} />
             </Tooltip>

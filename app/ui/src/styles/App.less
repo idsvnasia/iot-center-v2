@@ -1,15 +1,13 @@
 @import '~antd/dist/antd.less';
 
-// todo: make this more less-like
-
 @font-face {
   font-family: 'Rubik';
-  src: local('Rubik'), url(./fonts/Rubik-VariableFont_wght.ttf) format('truetype-variations');
+  src: local('Rubik'),
+    url(./fonts/Rubik-VariableFont_wght.ttf) format('truetype-variations');
 }
 
 * {
-  // todo: add fallbacks
-  font-family: Rubik;
+  font-family: Rubik, Helvetica, Arial, Tahoma, Verdana, sans-serif;
 }
 
 .ant-btn {
@@ -62,7 +60,7 @@
   }
 }
 
-a.ant-btn{
+a.ant-btn {
   line-height: 48px;
 }
 
@@ -96,7 +94,7 @@ a.ant-btn{
 .ant-table {
   background: none;
 
-  table { 
+  table {
     border-spacing: 0 5px;
     filter: drop-shadow(@box-shadow);
 
@@ -111,22 +109,26 @@ a.ant-btn{
 }
 
 .ant-pagination {
-  // todo: wihtout !important
-  button, li{
-    border: none !important;
-    background: none !important;
+  .ant-pagination-prev .ant-pagination-item-link,
+  .ant-pagination-next .ant-pagination-item-link,
+  li {
+    border: none;
+    background: none;
   }
 
-  .ant-pagination{
+  .ant-pagination {
     // clickables
-    &-prev, &-next, &-item {
+    &-prev,
+    &-next,
+    &-item {
       > * {
         color: @color-link;
       }
     }
 
     // non-clickable
-    &-disabled, &-item-active {
+    &-disabled,
+    &-item-active {
       > * {
         color: @color-text;
       }
@@ -136,12 +138,12 @@ a.ant-btn{
 
 .ant-collapse {
   box-shadow: @box-shadow;
-  
+
   > .ant-collapse-item {
     &:last-child > .ant-collapse-header {
       padding: 30px 60px;
     }
-  
+
     > .ant-collapse-header .ant-collapse-arrow {
       top: 23px;
       left: 36px;
