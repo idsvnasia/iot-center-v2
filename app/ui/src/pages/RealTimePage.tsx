@@ -469,6 +469,9 @@ const RealTimePage: FunctionComponent<
   // Map view automatically follows last point when realtime so drag is not necessary
   mapRef.current.setDragable(!isRealtime)
 
+  const {svgElement, svgUpdate, svgClear} = useRelatimeSVG(SvgFactory)
+  useEffect(() => svgUpdate({deviceId}), [deviceId, svgUpdate])
+
   const [subscriptions, setSubscriptions] = useState<RealtimeSubscription[]>([])
   // updaters are functions that updates plots outside of react state
   type Updaters = Record<string, G2PlotUpdater>
@@ -529,16 +532,16 @@ const RealTimePage: FunctionComponent<
   )
 
   /** Clear data and resets received data fields state */
-  const clearData = useRef(() => {
+  const clearData = useCallback(() => {
     clearReceivedDataFields()
     for (const measurement of fields) {
       updatersGaugeRef.current[measurement]?.(undefined)
       updatersLineRef.current[measurement]?.(undefined)
       mapRef.current.clear()
       svgClear()
-      svgUpdate({deviceId: deviceIdRef.current})
+      svgUpdate({deviceId})
     }
-  }).current
+  }, [mapRef, svgClear, svgUpdate, deviceId])
 
   useEffect(() => {
     if (isRealtime) clearData()
@@ -786,9 +789,7 @@ const RealTimePage: FunctionComponent<
         <>
           Realtime Dashboard
           {isVirtualDevice ? (
-            <Tooltip
-              title="This page is based on Dashboard page, it has two modes: past and live. Past data are received from influxdb and live data are sent directly from device by mqtt"
-            >
+            <Tooltip title="This page is based on Dashboard page, it has two modes: past and live. Past data are received from influxdb and live data are sent directly from device by mqtt">
               <InfoCircleFilled style={{fontSize: '1em', marginLeft: 5}} />
             </Tooltip>
           ) : undefined}
