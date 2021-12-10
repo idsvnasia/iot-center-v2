@@ -24,6 +24,7 @@ import {InfoCircleFilled} from '@ant-design/icons'
 import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {colorLink, colorPrimary} from '../styles/colors'
 import {DataManager} from '../util/realtime/managed'
+import DataManagerContextProvider from '../util/realtime/managed/react/DataManagerContext'
 
 //TODO: file upload JSON definition of dashboardu with JSON schema for validation
 //TODO: svg upload with escape for script for secure usage
@@ -52,11 +53,25 @@ type DashboardCellLayout = [
   }
 ]
 
-type DashboardCellType = 'svg' | 'plot'
+type DashboardCellType = 'svg' | 'plot' | 'geo'
 
 type DashboardCellSvg = {
   type: 'svg'
   file: string
+}
+
+// TODO: rename
+type DashboardCellGeoSet = {
+  zoom?: number
+  dragable?: boolean
+}
+
+type DashboardCellGeo = {
+  type: 'geo'
+  latField: string
+  lonField: string
+  Live: DashboardCellGeoSet
+  Past: DashboardCellGeoSet
 }
 
 type DashboardCellPlotType = 'gauge' | 'line'
@@ -83,7 +98,10 @@ type DashboardCellPlotLine = {
 
 type DashboardCellPlot = DashboardCellPlotGauge | DashboardCellPlotLine
 
-type DashboardCell = DashboardCellSvg | DashboardCellPlot
+type DashboardCell = DashboardCellSvg | DashboardCellPlot | DashboardCellGeo
+
+// TODO: height/width and other props of react grid
+type DashboardLayout = {cells: DashboardCell[]}
 
 /*
   keep layout same when no data
@@ -127,6 +145,11 @@ type DashboardCell = DashboardCellSvg | DashboardCellPlot
     unit: '',
   },
 */
+
+// TODO: export/import/select inside Dynamic dashboard
+const layout: DashboardLayout = {
+  cells: [],
+}
 
 /*
  ********************************************
@@ -458,6 +481,9 @@ const timeOptions: {label: string; value: string}[] = [
   {label: 'Past 30d', value: '-30d'},
 ]
 
+const getIsRealtime = (timeStart: string) =>
+  timeOptionsRealtime.some((x) => x.value === timeStart)
+
 interface PropsRoute {
   deviceId?: string
 }
@@ -467,81 +493,19 @@ interface Props {
   mqttEnabled: boolean | undefined
 }
 
-/** Selects source based on timeStart and feed data into DataManager */
-const useSource = (
-  manager: DataManager,
-  clientId: string,
-  timeStart: string,
-  fields: string[]
-) => {
-  const loading = false
-  return loading
-}
+/** Selects source based on timeStart, normalize and feed data into DataManager */
+const useSource = (deviceId: string, timeStart: string, fields: string[]) => {
+  const [state, setState] = useState({
+    loading: false,
+    manager: new DataManager(),
+  })
 
-type DashboardLayout = {
-  layout: DashboardCell
-}
-
-/**
- * render dashboard cells for layout, data passed by context
- */
-const DashboardLayout: React.FC<DashboardLayout> = () => {
-  return <></>
-}
-
-const DynamicDashboardPage: FunctionComponent<
-  RouteComponentProps<PropsRoute> & Props
-> = ({match, history, helpCollapsed, mqttEnabled}) => {
-  const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
-  // loading is defaultly false because we don't load data when page load.
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<Message | undefined>()
-  const [dataStamp, setDataStamp] = useState(0)
-  const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
-  const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
-
-  const isVirtualDevice = deviceId === VIRTUAL_DEVICE
-
-  // TODO: move dis
-  // #region move to useSource
+  const isRealtime = getIsRealtime(timeStart)
 
   const [deviceData, setDeviceData] = useState<DeviceData | undefined>()
   const measurementsTable = deviceData?.measurementsTable
 
-  // TODO: remove, this is handled in data manager
-  const [receivedDataFields, setReceivedDataFields] = useState<string[]>([])
-
-  // #endregion move to useSource
-
-  const updateReceivedDataFields = (updatedFields: string[]) => {
-    setReceivedDataFields((prevState) => {
-      const newFields = updatedFields.filter(
-        (x) => !prevState.some((y) => x === y)
-      )
-      if (!newFields.length) return prevState
-      return [...prevState, ...newFields]
-    })
-  }
-  const clearReceivedDataFields = () =>
-    setReceivedDataFields((prevState) => (prevState.length ? [] : prevState))
-  const hasData = (column: string) =>
-    receivedDataFields.some((x) => x === column)
-
   // #region realtime
-
-  const isRealtime = timeOptionsRealtime.some((x) => x.value === timeStart)
-
-  // Default time selected to Past when mqtt not configured
-  useEffect(() => {
-    if (mqttEnabled === false) {
-      setTimeStart(timeOptions[0].value)
-    }
-  }, [mqttEnabled])
-
-  // We use hook instead of component so we can bypass react and have full control of rendering plots
-  const {mapElement, mapRef} = useMap()
-  // Map view automatically follows last point when realtime so drag is not necessary
-  mapRef.current.setDragable(!isRealtime)
 
   const [subscriptions, setSubscriptions] = useState<RealtimeSubscription[]>([])
   // updaters are functions that updates plots outside of react state
@@ -555,7 +519,6 @@ const DynamicDashboardPage: FunctionComponent<
         timeOptionsRealtime.findIndex((x) => x.value === timeStart)
       ].realtimeRetention
     : Infinity
-  mapRef.current.retentionTime = retentionTime
 
   useEffect(() => {
     setSubscriptions(
@@ -618,9 +581,6 @@ const DynamicDashboardPage: FunctionComponent<
 
   // fetch device configuration and data
   useEffect(() => {
-    // we don't use fetchDeviceLastValues
-    //   Gauge plots will handle last walue selection for us
-
     const fetchData = async () => {
       setLoading(true)
       try {
@@ -646,6 +606,49 @@ const DynamicDashboardPage: FunctionComponent<
     if (!isRealtime) fetchData()
   }, [dataStamp, deviceId, timeStart, isRealtime])
 
+  return state
+}
+
+type DashboardLayoutProps = {
+  layout: DashboardLayout
+}
+
+/**
+ * render dashboard cells for layout, data passed by context
+ */
+const DashboardLayout: React.FC<DashboardLayoutProps> = () => {
+  return <></>
+}
+
+const getFields = () =>{
+
+}
+
+const DynamicDashboardPage: FunctionComponent<
+  RouteComponentProps<PropsRoute> & Props
+> = ({match, history, mqttEnabled}) => {
+  const deviceId = match.params.deviceId ?? VIRTUAL_DEVICE
+  // loading is defaultly false because we don't load data when page load.
+  const [message, setMessage] = useState<Message | undefined>()
+  const [dataStamp, setDataStamp] = useState(0)
+  const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
+  const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
+
+  const isVirtualDevice = deviceId === VIRTUAL_DEVICE
+  const isRealtime = getIsRealtime(timeStart)
+
+  // TODO: get fields from dashboard definitions
+  const fields: string[] = []
+
+  const {loading, manager} = useSource(deviceId, timeStart, fields)
+
+  // Default time selected to Past when mqtt not configured
+  useEffect(() => {
+    if (mqttEnabled === false) {
+      setTimeStart(timeOptions[0].value)
+    }
+  }, [mqttEnabled])
+
   useEffect(() => {
     const fetchDevices = async () => {
       try {
@@ -667,104 +670,6 @@ const DynamicDashboardPage: FunctionComponent<
 
     fetchDevices()
   }, [])
-
-  /*
-    Rendering plots with minilibrary written in util/realtime/
-    This time, data isn't pass by state but by calling callback (got by onUpdaterChange) 
-    which allows us to update plot more frequently with better performance.
-    All plots has to be rendered whole time because we need to have updater function from it. (so we use display 'none' instead of conditional rendering)
-  */
-  const renderGauge = (column: string) => (
-    <G2Plot
-      type={Gauge}
-      onUpdaterChange={(updater) =>
-        (updatersGaugeRef.current[column] = updater)
-      }
-      options={gaugesPlotOptions[column]}
-    />
-  )
-
-  // gaugeLastTimeMessage not implemented
-
-  const gauges = (
-    <Row gutter={[22, 22]}>
-      {fields.map((column, i) => {
-        return (
-          <Col
-            sm={helpCollapsed ? 24 : 24}
-            md={helpCollapsed ? 12 : 24}
-            xl={helpCollapsed ? 6 : 12}
-            style={hasData(column) ? {} : {display: 'none'}}
-            key={i}
-          >
-            <Card title={column}>{renderGauge(column)}</Card>
-          </Col>
-        )
-      })}
-    </Row>
-  )
-
-  const plotDivider = (
-    <Divider style={{color: 'rgba(0, 0, 0, .2)'}} orientation="right">
-      {noDataFields.length
-        ? `No data for: ${noDataFields.join(', ')}`
-        : undefined}
-    </Divider>
-  )
-
-  const geo = (
-    <div
-      style={{
-        height: '500px',
-        minWidth: '200px',
-        ...(hasData('Lat') ? {} : {display: 'none'}),
-      }}
-    >
-      {mapElement}
-    </div>
-  )
-
-  const renderPlot = (column: string) => (
-    <G2Plot
-      type={Line}
-      onUpdaterChange={(updater) => (updatersLineRef.current[column] = updater)}
-      options={linePlotOptions[column]}
-      retentionTimeMs={retentionTime}
-    />
-  )
-
-  const plots = (() => {
-    return (
-      <>
-        <Row gutter={[0, 24]}>
-          {fields.map((field, i) => (
-            <Col
-              xs={24}
-              style={hasData(field) ? {} : {display: 'none'}}
-              key={i}
-            >
-              <Collapse defaultActiveKey={[i]}>
-                <CollapsePanel key={i} header={field}>
-                  {renderPlot(field)}
-                </CollapsePanel>
-              </Collapse>
-            </Col>
-          ))}
-        </Row>
-        {noDataFields.length ? (
-          <Collapse>
-            {noDataFields.map((field, i) => (
-              <CollapsePanel
-                collapsible="disabled"
-                header={`${field} - No data`}
-                key={i}
-              />
-            ))}
-          </Collapse>
-        ) : undefined}
-      </>
-    )
-  })()
 
   const pageControls = (
     <>
@@ -860,17 +765,9 @@ const DynamicDashboardPage: FunctionComponent<
       spin={loading}
       forceShowScroll={true}
     >
-      <div style={receivedDataFields.length ? {} : {display: 'none'}}>
-        {gauges}
-        {plotDivider}
-        {geo}
-        {plots}
-      </div>
-      {!receivedDataFields.length ? (
-        <Card>
-          <Empty />
-        </Card>
-      ) : undefined}
+      <DataManagerContextProvider value={manager}>
+        <DashboardLayout {...{layout}} />
+      </DataManagerContextProvider>
     </PageContent>
   )
 }

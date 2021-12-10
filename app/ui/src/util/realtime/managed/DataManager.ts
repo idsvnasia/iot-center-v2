@@ -22,11 +22,17 @@ export type DataManagerOnChangeEvent = {
   /** all keys with changed data (added/removed) */
   changedKeys: string[],
   /** all keys with changed data entry with highest time (added/removed) */
-  lastValueChangedKeys: string[]
+  lastValueChangedKeys: string[],
+  /** if retention was changed */
+  retentionChanged: boolean,
 }
 /**
  * state management for realtime components
- * encapsulates logic for retention time, simplification, merge lat/lon data for map, interval redraw when no new data sent
+ * encapsulates logic for
+ *  - retention time based on current time
+ *  - simplification
+ *  - merge lat/lon for map
+ *  - interval redraw when no new data sent
  */
 export class DataManager {
   private _data: DataManagerData = {}
@@ -57,6 +63,12 @@ export class DataManager {
 
   get retentionUsed() {
     return this._retentionTimeMs !== Infinity && this._retentionTimeMs > 0
+  }
+
+  // TODO: rename ?
+  /** returns range where max=now, min=max-retentionTime */
+  get timeReference() {
+    throw new Error("not implemented")
   }
 
   applyRetentionOnData() {
