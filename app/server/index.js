@@ -44,7 +44,7 @@ async function startApplication() {
   app.get('*', (_req, res) => {
     res.status(200)
     res.setHeader('Content-Type', 'text/html')
-    res.send(indexFile)
+    res.end(indexFile)
   })
 
   // onboard a new InfluxDB instance
