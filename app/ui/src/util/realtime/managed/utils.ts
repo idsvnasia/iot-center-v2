@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef} from 'react'
-import {simplifyForNormalizedData} from './simplyfiGiraffe'
+import {simplifyForNormalizedData} from '../simplyfiGiraffe'
 
 // TODO: comments (JSDoc)
 

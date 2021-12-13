@@ -22,3 +22,8 @@ export const IconVirtualDevice: React.FC = () => (
 )
 export const IconRefresh: React.FC = () => <Icon component={RefreshSvg} />
 export const IconWriteData: React.FC = () => <Icon component={WriteDataSvg} />
+
+export {
+  LineChartOutlined as IconDynamicDashboard,
+  PlayCircleOutlined as IconRealtimeDashboard,
+} from '@ant-design/icons'

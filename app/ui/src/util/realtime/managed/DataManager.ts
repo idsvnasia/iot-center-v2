@@ -72,45 +72,48 @@ export class DataManager {
   }
 
   applyRetentionOnData() {
-    if (!this._data) return
-    const l0 = this._data.length
-    applyRetention(this._data, this._retentionTimeMs)
-    const l1 = this._data.length
-    if (l0 !== l1) this._cache.clear()
+    // if (!this._data) return
+    // const l0 = this._data.length
+    // applyRetention(this._data, this._retentionTimeMs)
+    // const l1 = this._data.length
+    // if (l0 !== l1) this._cache.clear()
   }
 
   updateData(newData: DiagramEntryPoint[] | undefined) {
-    if (newData === undefined) this._data = undefined
-    else {
-      if (this._data === undefined) this._data = []
-      pushBigArray(this._data, newData)
-    }
-    this.applyRetentionOnData()
+    // if (newData === undefined) this._data = undefined
+    // else {
+    //   if (this._data === undefined) this._data = []
+    //   pushBigArray(this._data, newData)
+    // }
+    // this.applyRetentionOnData()
   }
 
   calculateSimplifyedData() {
-    return this._data ? simplifyDiagramEntryPointToMaxPoints(this._data) : []
+    // return this._data ? simplifyDiagramEntryPointToMaxPoints(this._data) : []
   }
 
   get dataTimeMinMax() {
-    return this._data?.length
-      ? getMinAndMax(this._data.map((x) => x.time))
-      : undefined
+    throw new Error("not implemented!")
+    // return this._data?.length
+    //   ? getMinAndMax(this._data.map((x) => x.time))
+    //   : undefined
   }
 
   get latestDataPoint() {
-    const minMax = this.dataTimeMinMax
-    if (!minMax || !this._data) return undefined
-    const { max } = minMax
-    return this._data.find((x) => x.time === max)
+    throw new Error("not implemented!")
+    // const minMax = this.dataTimeMinMax
+    // if (!minMax || !this._data) return undefined
+    // const { max } = minMax
+    // return this._data.find((x) => x.time === max)
   }
 
   get mask() {
-    if (!this._data) return ''
-    if (this._data.some((x) => x.time < Date.now() - 3 * DAY_MILLIS))
-      return maskDate
-    if (this._data.some((x) => x.time < Date.now() - DAY_MILLIS))
-      return maskDateTime
-    return maskTime
+    throw new Error("not implemented!")
+    // if (!this._data) return ''
+    // if (this._data.some((x) => x.time < Date.now() - 3 * DAY_MILLIS))
+    //   return maskDate
+    // if (this._data.some((x) => x.time < Date.now() - DAY_MILLIS))
+    //   return maskDateTime
+    // return maskTime
   }
 }

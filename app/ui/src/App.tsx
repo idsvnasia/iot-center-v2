@@ -18,15 +18,18 @@ import DevicesPage from './pages/DevicesPage'
 import DevicePage from './pages/DevicePage'
 import NotFoundPage from './pages/NotFoundPage'
 import DashboardPage from './pages/DashboardPage'
+import RealTimePage from './pages/RealTimePage'
+import DynamicDashboardPage from "./pages/DynamicDashboardPage"
 
 import {
   IconDashboard,
   IconDeviceRegistration,
+  IconDynamicDashboard,
   IconHome,
+  IconRealtimeDashboard,
   IconVirtualDevice,
 } from './styles/icons'
-import RealTimePage from './pages/RealTimePage'
-import {PlayCircleOutlined} from '@ant-design/icons'
+
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
@@ -137,6 +140,9 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
               ...(matchPath(props.location.pathname, '/realtime/:device')
                 ? ['/realtime/:device']
                 : []),
+              ...(matchPath(props.location.pathname, '/dynamic/:device')
+                ? ['/dynamic/:device']
+                : []),
             ]}
             mode="inline"
           >
@@ -158,7 +164,7 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             <Menu.Item
               style={mqttEnabled === true ? {} : {color: 'gray'}}
               key="/realtime/:device"
-              icon={<PlayCircleOutlined />}
+              icon={<IconRealtimeDashboard />}
             >
               <NavLink
                 style={mqttEnabled === true ? {} : {color: 'gray'}}
@@ -166,6 +172,9 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
               >
                 Realtime
               </NavLink>
+            </Menu.Item>
+            <Menu.Item key="/dynamic/:device" icon={<IconDynamicDashboard />}>
+              <NavLink to="/dynamic">Dynamic</NavLink>
             </Menu.Item>
           </Menu>
         </Sider>
@@ -204,6 +213,14 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             path="/realtime/:deviceId"
             render={(props) => (
               <RealTimePage {...props} {...{helpCollapsed, mqttEnabled}} />
+            )}
+          />
+          <Redirect exact from="/dynamic" to={`/dynamic/${VIRTUAL_DEVICE}`} />
+          <Route
+            exact
+            path="/dynamic/:deviceId"
+            render={(props) => (
+              <DynamicDashboardPage {...props} {...{helpCollapsed, mqttEnabled}} />
             )}
           />
           <Route path="*" component={NotFoundPage} />

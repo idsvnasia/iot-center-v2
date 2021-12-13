@@ -19,12 +19,10 @@ import {IconRefresh, IconSettings} from '../styles/icons'
 import {Table as GiraffeTable} from '@influxdata/giraffe'
 import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
-import {Row, Col, Collapse, Empty, Divider} from 'antd'
-import {InfoCircleFilled} from '@ant-design/icons'
-import CollapsePanel from 'antd/lib/collapse/CollapsePanel'
 import {colorLink, colorPrimary} from '../styles/colors'
 import {DataManager} from '../util/realtime/managed'
 import DataManagerContextProvider from '../util/realtime/managed/react/DataManagerContext'
+import ReactGridLayoutFixed from '../util/ReactGridLayoutFixed'
 
 //TODO: file upload JSON definition of dashboardu with JSON schema for validation
 //TODO: svg upload with escape for script for secure usage
@@ -40,18 +38,18 @@ import DataManagerContextProvider from '../util/realtime/managed/react/DataManag
   )
 */
 
-type DashboardCellLayout = [
-  {
-    /** position from left 0-11 */
-    x: number
-    /** position from top */
-    y: number
-    /** width - x coord */
-    w: number
-    /** height - y coord */
-    h: number
-  }
-]
+type DashboardCellLayout = {
+  /** position from left 0-11 */
+  x: number
+  /** position from top */
+  y: number
+  /** width - x coord */
+  w: number
+  /** height - y coord */
+  h: number
+}
+
+// TODO: optional fields - defaults filling functions
 
 type DashboardCellType = 'svg' | 'plot' | 'geo'
 
@@ -98,10 +96,14 @@ type DashboardCellPlotLine = {
 
 type DashboardCellPlot = DashboardCellPlotGauge | DashboardCellPlotLine
 
-type DashboardCell = DashboardCellSvg | DashboardCellPlot | DashboardCellGeo
+type DashboardCell = (
+  | DashboardCellSvg
+  | DashboardCellPlot
+  | DashboardCellGeo
+) & {layout: DashboardCellLayout}
 
 // TODO: height/width and other props of react grid
-type DashboardLayout = {cells: DashboardCell[]}
+type DashboardLayoutDefiniton = {cells: DashboardCell[]}
 
 /*
   keep layout same when no data
@@ -147,8 +149,119 @@ type DashboardLayout = {cells: DashboardCell[]}
 */
 
 // TODO: export/import/select inside Dynamic dashboard
-const layout: DashboardLayout = {
-  cells: [],
+const layout: DashboardLayoutDefiniton = {
+  cells: [
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: -10, max: 50},
+      field: 'Temperature',
+      label: 'Temperature',
+      unit: '°C',
+      decimalPlaces: 1,
+      layout: {x: 0, y: 0, w: 4, h: 2},
+    },
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: 0, max: 100},
+      field: 'Humidity',
+      label: 'Humidity',
+      unit: '%',
+      decimalPlaces: 2,
+      layout: {x: 4, y: 0, w: 4, h: 2},
+    },
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: 800, max: 1100},
+      field: 'Pressure',
+      label: 'Pressure',
+      unit: 'hPa',
+      decimalPlaces: 2,
+      layout: {x: 8, y: 0, w: 4, h: 2},
+    },
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: 300, max: 3500},
+      field: 'CO2',
+      label: 'CO2',
+      unit: 'ppm',
+      decimalPlaces: 2,
+      layout: {x: 0, y: 2, w: 6, h: 2},
+    },
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: 200, max: 2200},
+      field: 'TVOC',
+      label: 'TVOC',
+      unit: '',
+      decimalPlaces: 2,
+      layout: {x: 6, y: 2, w: 6, h: 2},
+    },
+
+    {
+      type: 'geo',
+      latField: 'Lat',
+      lonField: 'Lon',
+      Live: {},
+      Past: {},
+      layout: {x: 0, y: 3, w: 12, h: 3},
+    },
+
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: -10, max: 50},
+      field: 'Temperature',
+      label: 'Temperature',
+      unit: '°C',
+      decimalPlaces: 1,
+      layout: {x: 0, y: 6, w: 12, h: 3},
+    },
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: 0, max: 100},
+      field: 'Humidity',
+      label: 'Humidity',
+      unit: '%',
+      decimalPlaces: 2,
+      layout: {x: 0, y: 9, w: 12, h: 3},
+    },
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: 800, max: 1100},
+      field: 'Pressure',
+      label: 'Pressure',
+      unit: 'hPa',
+      decimalPlaces: 2,
+      layout: {x: 0, y: 12, w: 12, h: 3},
+    },
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: 300, max: 3500},
+      field: 'CO2',
+      label: 'CO2',
+      unit: 'ppm',
+      decimalPlaces: 2,
+      layout: {x: 0, y: 15, w: 12, h: 3},
+    },
+    {
+      type: 'plot',
+      plotType: 'gauge',
+      range: {min: 200, max: 2200},
+      field: 'TVOC',
+      label: 'TVOC',
+      unit: '',
+      decimalPlaces: 2,
+      layout: {x: 0, y: 18, w: 12, h: 3},
+    },
+  ],
 }
 
 /*
@@ -500,128 +613,150 @@ const useSource = (deviceId: string, timeStart: string, fields: string[]) => {
     manager: new DataManager(),
   })
 
-  const isRealtime = getIsRealtime(timeStart)
+  // const isRealtime = getIsRealtime(timeStart)
 
-  const [deviceData, setDeviceData] = useState<DeviceData | undefined>()
-  const measurementsTable = deviceData?.measurementsTable
+  // const [deviceData, setDeviceData] = useState<DeviceData | undefined>()
+  // const measurementsTable = deviceData?.measurementsTable
 
-  // #region realtime
+  // // #region realtime
 
-  const [subscriptions, setSubscriptions] = useState<RealtimeSubscription[]>([])
-  // updaters are functions that updates plots outside of react state
-  type Updaters = Record<string, G2PlotUpdater>
-  const updatersGaugeRef = useRef<Updaters>({})
-  const updatersLineRef = useRef<Updaters>({})
+  // const [subscriptions, setSubscriptions] = useState<RealtimeSubscription[]>([])
+  // // updaters are functions that updates plots outside of react state
+  // type Updaters = Record<string, G2PlotUpdater>
+  // const updatersGaugeRef = useRef<Updaters>({})
+  // const updatersLineRef = useRef<Updaters>({})
 
-  /** plot is showed with fixed time range if set */
-  const retentionTime = isRealtime
-    ? timeOptionsRealtime[
-        timeOptionsRealtime.findIndex((x) => x.value === timeStart)
-      ].realtimeRetention
-    : Infinity
+  // /** plot is showed with fixed time range if set */
+  // const retentionTime = isRealtime
+  //   ? timeOptionsRealtime[
+  //       timeOptionsRealtime.findIndex((x) => x.value === timeStart)
+  //     ].realtimeRetention
+  //   : Infinity
 
-  useEffect(() => {
-    setSubscriptions(
-      isRealtime
-        ? [{measurement: 'environment', tags: [`clientId=${deviceId}`]}]
-        : []
-    )
-  }, [deviceId, isRealtime])
+  // useEffect(() => {
+  //   setSubscriptions(
+  //     isRealtime
+  //       ? [{measurement: 'environment', tags: [`clientId=${deviceId}`]}]
+  //       : []
+  //   )
+  // }, [deviceId, isRealtime])
 
-  /** Push data to desired plots and rerender them */
-  const updateData = useRef((data: DiagramEntryPoint[]) => {
-    updateReceivedDataFields(getFieldsOfData(data))
+  // /** Push data to desired plots and rerender them */
+  // const updateData = useRef((data: DiagramEntryPoint[]) => {
+  //   updateReceivedDataFields(getFieldsOfData(data))
 
-    mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
+  //   mapRef.current.addPoints(diagramEntryPointsToMapTimePoints(data))
 
-    for (const field of fields) {
-      const lineData = data.filter(({key}) => key === field)
+  //   for (const field of fields) {
+  //     const lineData = data.filter(({key}) => key === field)
 
-      const {min, max} = measurementsDefinitions[field]
-      const gaugeData = lineData.map((x) => ({
-        ...x,
-        // plot library uses data for gauges in [0,1] interval
-        value: (x.value - min) / (max - min),
-      }))
+  //     const {min, max} = measurementsDefinitions[field]
+  //     const gaugeData = lineData.map((x) => ({
+  //       ...x,
+  //       // plot library uses data for gauges in [0,1] interval
+  //       value: (x.value - min) / (max - min),
+  //     }))
 
-      updatersLineRef.current[field]?.(lineData)
-      updatersGaugeRef.current[field]?.(gaugeData)
-    }
-  }).current
+  //     updatersLineRef.current[field]?.(lineData)
+  //     updatersGaugeRef.current[field]?.(gaugeData)
+  //   }
+  // }).current
 
-  useRealtimeData(
-    subscriptions,
-    useRef((points: RealtimePoint[]) => {
-      updateData(realtimePointToDiagrameEntryPoint(points))
-    }).current
-  )
+  // useRealtimeData(
+  //   subscriptions,
+  //   useRef((points: RealtimePoint[]) => {
+  //     updateData(realtimePointToDiagrameEntryPoint(points))
+  //   }).current
+  // )
 
-  /** Clear data and resets received data fields state */
-  const clearData = useCallback(() => {
-    clearReceivedDataFields()
-    for (const measurement of fields) {
-      updatersGaugeRef.current[measurement]?.(undefined)
-      updatersLineRef.current[measurement]?.(undefined)
-      mapRef.current.clear()
-    }
-  }, [mapRef])
+  // /** Clear data and resets received data fields state */
+  // const clearData = useCallback(() => {
+  //   clearReceivedDataFields()
+  //   for (const measurement of fields) {
+  //     updatersGaugeRef.current[measurement]?.(undefined)
+  //     updatersLineRef.current[measurement]?.(undefined)
+  //     mapRef.current.clear()
+  //   }
+  // }, [mapRef])
 
-  useEffect(() => {
-    if (isRealtime) clearData()
-  }, [isRealtime, clearData])
-  useEffect(clearData, [deviceId, clearData])
+  // useEffect(() => {
+  //   if (isRealtime) clearData()
+  // }, [isRealtime, clearData])
+  // useEffect(clearData, [deviceId, clearData])
 
-  // On measurementsTable is changed, we render it in plots
-  useEffect(() => {
-    clearData()
-    updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fieldsAll))
-  }, [measurementsTable, updateData, clearData])
+  // // On measurementsTable is changed, we render it in plots
+  // useEffect(() => {
+  //   clearData()
+  //   updateData(giraffeTableToDiagramEntryPoints(measurementsTable, fieldsAll))
+  // }, [measurementsTable, updateData, clearData])
 
-  // #endregion realtime
+  // // #endregion realtime
 
-  // fetch device configuration and data
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        const config = await fetchDeviceConfig(deviceId)
-        const deviceData: DeviceData = {config}
-        const [table] = await Promise.all([
-          fetchDeviceMeasurements(config, timeStart),
-        ])
-        deviceData.measurementsTable = table
-        setDeviceData(deviceData)
-      } catch (e) {
-        console.error(e)
-        setMessage({
-          title: 'Cannot load device data',
-          description: String(e),
-          type: 'error',
-        })
-      }
-      setLoading(false)
-    }
+  // // fetch device configuration and data
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     setLoading(true)
+  //     try {
+  //       const config = await fetchDeviceConfig(deviceId)
+  //       const deviceData: DeviceData = {config}
+  //       const [table] = await Promise.all([
+  //         fetchDeviceMeasurements(config, timeStart),
+  //       ])
+  //       deviceData.measurementsTable = table
+  //       setDeviceData(deviceData)
+  //     } catch (e) {
+  //       console.error(e)
+  //       setMessage({
+  //         title: 'Cannot load device data',
+  //         description: String(e),
+  //         type: 'error',
+  //       })
+  //     }
+  //     setLoading(false)
+  //   }
 
-    // fetch data only if not in realtime mode
-    if (!isRealtime) fetchData()
-  }, [dataStamp, deviceId, timeStart, isRealtime])
+  //   // fetch data only if not in realtime mode
+  //   if (!isRealtime) fetchData()
+  // }, [dataStamp, deviceId, timeStart, isRealtime])
 
   return state
 }
 
 type DashboardLayoutProps = {
-  layout: DashboardLayout
+  layout: DashboardLayoutDefiniton
 }
 
 /**
  * render dashboard cells for layout, data passed by context
  */
-const DashboardLayout: React.FC<DashboardLayoutProps> = () => {
-  return <></>
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({layout}) => {
+  const {cells} = layout;
+
+  return (
+    <div style={{position: 'relative'}}>
+      <ReactGridLayoutFixed
+        cols={12}
+        rowHeight={80}
+        isResizable={true}
+        onLayoutChange={(...x) => {
+          console.log(x)
+        }}
+      >
+        {cells.map((cell, i)=>
+          <div key={i} data-grid={cell.layout}>
+            <Card style={{height: '100%'}} title={"label" in cell ? cell.label : ""}></Card>
+          </div>
+        )}
+      </ReactGridLayoutFixed>
+    </div>
+  )
 }
 
-const getFields = () =>{
-
+/**
+ * returns fields for given layout
+ */
+const getFields = (layout: DashboardLayoutDefiniton): string[] => {
+  throw new Error('not implemented!')
 }
 
 const DynamicDashboardPage: FunctionComponent<
@@ -750,23 +885,14 @@ const DynamicDashboardPage: FunctionComponent<
 
   return (
     <PageContent
-      title={
-        <>
-          Realtime Dashboard
-          {isVirtualDevice ? (
-            <Tooltip title="This page is based on Dashboard page, it has two modes: past and live. Past data are received from influxdb and live data are sent directly from device by mqtt">
-              <InfoCircleFilled style={{fontSize: '1em', marginLeft: 5}} />
-            </Tooltip>
-          ) : undefined}
-        </>
-      }
+      title={'Dynamic Dashboard'}
       titleExtra={pageControls}
       message={message}
       spin={loading}
       forceShowScroll={true}
     >
       <DataManagerContextProvider value={manager}>
-        <DashboardLayout {...{layout}} />
+        <DashboardLayout layout={layout} />
       </DataManagerContextProvider>
     </PageContent>
   )
