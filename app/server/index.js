@@ -1,6 +1,7 @@
 /* eslint-disable no-process-exit */
 const express = require('express')
 const path = require('path')
+const fs = require('fs/promises')
 const proxy = require('express-http-proxy')
 
 const apis = require('./apis')
@@ -36,11 +37,14 @@ async function startApplication() {
   console.log(`Enable proxy from /influx/* to ${INFLUX_URL}/*`)
 
   // UI
-  const uiBuildDir = path.join(__dirname, '../ui/build')
+  const uiBuildDir = path.join(__dirname, '..', 'ui', 'build')
   app.use(express.static(uiBuildDir))
+  const indexFile = await fs.readFile(path.join(uiBuildDir, 'index.html'))
   // assume UI client navigation
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(uiBuildDir, 'index.html'))
+  app.get('*', (_req, res) => {
+    res.status(200)
+    res.setHeader('Content-Type', 'text/html')
+    res.end(indexFile)
   })
 
   // onboard a new InfluxDB instance

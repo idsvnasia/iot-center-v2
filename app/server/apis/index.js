@@ -127,7 +127,7 @@ router.delete(
       }
     }
     res.status(404)
-    res.send(`Device ${deviceId} not found!`)
+    res.send(`Device not found!`)
   })
 )
 

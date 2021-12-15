@@ -53,7 +53,8 @@ async function mqttRouter() {
       await client.publish(MQTT_TOPIC, influxLineProtocolData)
     } catch (e) {
       res.status(500)
-      res.end('MQTT producer error: ' + e)
+      console.error('MQTT producer error', e)
+      res.end('MQTT producer error')
       return
     }
     res.status(204)
