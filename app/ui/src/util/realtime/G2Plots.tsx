@@ -10,6 +10,7 @@ import {
   pushBigArray,
   applyRetention,
   getMinAndMax,
+  throwReturn,
 } from '.'
 
 const DAY_MILLIS = 24 * 60 * 60 * 1000
@@ -17,13 +18,6 @@ const DAY_MILLIS = 24 * 60 * 60 * 1000
 const maskTime = 'hh:mm:ss'
 const maskDate = 'DD/MM/YY'
 const maskDateTime = `${maskDate} ${maskTime} `
-
-/**
- * helper for throwing error from expression
- */
-const throwReturn = <T,>(msg: string): NonNullable<T> => {
-  throw new Error(msg)
-}
 
 const g2PlotDefaults = {
   data: [],

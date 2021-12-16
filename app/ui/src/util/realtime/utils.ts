@@ -129,3 +129,10 @@ export const useRafOnce = (callback: () => void): (() => void) => {
     handleRef.current = requestAnimationFrame(callback)
   }, [callback])
 }
+
+/**
+ * helper for throwing error from expression
+ */
+export const throwReturn = <T,>(msg: string): NonNullable<T> => {
+  throw new Error(msg)
+}
