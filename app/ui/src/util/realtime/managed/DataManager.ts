@@ -1,3 +1,4 @@
+import { ShorthandPropertyAssignment } from "typescript"
 import { DiagramEntryPoint, getMinAndMax, MinAndMax, pushBigArray, simplifyDiagramEntryPointToMaxPoints } from "."
 
 const DAY_MILLIS = 24 * 60 * 60 * 1000
@@ -6,9 +7,17 @@ const maskTime = 'hh:mm:ss'
 const maskDate = 'DD/MM/YY'
 const maskDateTime = `${maskDate} ${maskTime} `
 
+/**
+ * [time, value]
+ */
 type TimeValue = [number, number]
 
 type TimeValueLines = Record<string, TimeValue[]>
+
+/**
+ * [lat, lng, time]
+ */
+export type LatLonTime = [number, number, number]
 
 export type DataManagerOnChangeEvent = {
   target: DataManager,
@@ -46,13 +55,63 @@ const containsSame = <T>(arr: T[], arr2: T[]) =>
 const timeValueLinesToDiagramEntryPoint = (lines: TimeValueLines, keys: string[] | undefined = undefined) => {
   const nonNullKeys = (keys ?? Object.keys(lines))
 
-  const len = nonNullKeys.map(x => lines[x].length || 0).reduce((a, b) => a + b, 0);
+  const len = nonNullKeys.map(x => lines[x]?.length ?? 0).reduce((a, b) => a + b, 0);
   const arr: DiagramEntryPoint[] = new Array(len);
+
   let lastIndex = 0;
 
-  nonNullKeys.forEach(x => {
-    const line = lines[x]
+  nonNullKeys.forEach(key => {
+    const line = lines[key]
+    if (!line) return;
+    for (let i = line.length; i--;) {
+      const [time, value] = line[i];
+      arr[lastIndex] = { key, time, value };
+      lastIndex++;
+    }
   })
+
+  arr.sort((a, b) => a.time - b.time)
+
+  return arr;
+}
+
+/**
+ * Extracts latlon pairs and return them as LatLonTime for realtime-map
+ */
+const diagramEntryPointsToMapTimePoints = (
+  data: DiagramEntryPoint[],
+  latLonKeys: [string, string] = ['Lat', 'Lon']
+): LatLonTime[] => {
+  const [latKey, lonKey] = latLonKeys
+  const lats = data.filter((x) => x.key === latKey)
+  const lons = data.filter((x) => x.key === lonKey)
+  const pointHashMap: Map<number, LatLonTime> = new Map()
+  const points: LatLonTime[] = new Array(lats.length)
+
+  for (let i = lats.length; i--;) {
+    const { time, value } = lats[i]
+    const point: LatLonTime = [value, undefined as any, time]
+    pointHashMap.set(time, point)
+    points[i] = point
+  }
+
+  for (let i = lons.length; i--;) {
+    const { time, value } = lons[i]
+    const entry = pointHashMap.get(time)
+    if (entry) entry[1] = value
+  }
+
+  let length = points.length
+  for (let i = length; i--;) {
+    if (points[i][1] === undefined) {
+      length--
+      points[i] = points[length]
+    }
+  }
+  points.length = length
+  points.sort((a, b) => a[2] - b[2])
+
+  return points
 }
 
 const DiagramEntryPointsToTimeValueLines = (arr: DiagramEntryPoint[]) => {
@@ -120,7 +179,7 @@ export class DataManager {
   }
 
   private _callOnChange() {
-    this._onChangeCallbacks.forEach(callback => 
+    this._onChangeCallbacks.forEach(callback =>
       // todo: optimize by checking what realy changed
       callback({
         changedKeys: Object.keys(this._data),
@@ -212,7 +271,7 @@ export class DataManager {
     } else if (keys.length > 1) {
       this._simplifiedDataCache[key] =
         ([] as DiagramEntryPoint[])
-          .concat(...keys.map(x => this._simplifiedDataCache[x]))
+          .concat(...keys.map(x => this.calculateSimplifyedData([x])))
           .sort((a, b) => a.time - b.time)
     } else {
       const data = this._data[key];
@@ -252,5 +311,12 @@ export class DataManager {
     else if (min + DAY_MILLIS < max)
       return maskDateTime
     else return maskTime
+  }
+
+  // TODO: caching
+  getLatLonTime(latLonKey: [string, string] = ['Lat', 'Lon']) {
+    const depData = timeValueLinesToDiagramEntryPoint(this._data, latLonKey);
+    console.log(depData.length)
+    return diagramEntryPointsToMapTimePoints(depData, latLonKey)
   }
 }

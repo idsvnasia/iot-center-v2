@@ -21,9 +21,10 @@ import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
 import {queryTable} from '../util/queryTable'
 import {colorLink, colorPrimary} from '../styles/colors'
 import {asArray, DataManager, MinAndMax} from '../util/realtime/managed'
-import DataManagerContextProvider from '../util/realtime/managed/react/DataManagerContext'
+import DataManagerContextProvider from '../util/realtime/managed/DataManagerContext'
 import ReactGridLayoutFixed from '../util/ReactGridLayoutFixed'
-import {ManagedG2PlotReact} from '../util/realtime/managed/react/ManagedG2PlotReact'
+import {ManagedG2PlotReact} from '../util/realtime/managed/components/react/ManagedG2PlotReact'
+import {ManagedMapReact} from '../util/realtime/managed/components/react/ManagedMapReact'
 
 //TODO: file upload JSON definition of dashboardu with JSON schema for validation
 //TODO: svg upload with escape for script for secure usage
@@ -215,7 +216,7 @@ const layout: DashboardLayoutDefiniton = {
     {
       type: 'plot',
       plotType: 'line',
-      field: 'Temperature',
+      field: ['Temperature', "CO2"],
       label: 'Temperature',
       layout: {x: 0, y: 6, w: 12, h: 3},
     },
@@ -610,7 +611,7 @@ interface Props {
 }
 
 /** Selects source based on timeStart, normalize and feed data into DataManager */
-const useSource = (deviceId: string, timeStart: string, fields: string[]) => {
+const useSource = (deviceId: string, timeStart: string, fields: string[], dataStamp: number) => {
   const [state, setState] = useState({
     loading: false,
     manager: new DataManager(),
@@ -642,9 +643,9 @@ const useSource = (deviceId: string, timeStart: string, fields: string[]) => {
     )
   }, [deviceId, isRealtime])
 
-  const updateData = useRef((points: DiagramEntryPoint[] | undefined) => {
+  const updateData = useCallback((points: DiagramEntryPoint[] | undefined) => {
     if (points?.length) state.manager.updateData(points)
-  }).current
+  }, [])
 
   /** Clear data and resets received data fields state */
   const clearData = useRef(() => {
@@ -668,12 +669,13 @@ const useSource = (deviceId: string, timeStart: string, fields: string[]) => {
   // fetch device configuration and data
   useEffect(() => {
     const fetchData = async () => {
+      clearData()
       setState((s) => (!s.loading ? {...s, loading: true} : s))
       try {
         const config = await fetchDeviceConfig(deviceId)
         const table = await fetchDeviceMeasurements(config, timeStart)
-        clearData()
-        updateData(giraffeTableToDiagramEntryPoints(table, fields))
+        const dataPoints = giraffeTableToDiagramEntryPoints(table, fields)
+        updateData(dataPoints)
       } catch (e) {
         console.error(e)
         // TODO:
@@ -688,7 +690,7 @@ const useSource = (deviceId: string, timeStart: string, fields: string[]) => {
 
     // fetch data only if not in realtime mode
     if (!isRealtime) fetchData()
-  }, [deviceId, timeStart, isRealtime])
+  }, [deviceId, timeStart, isRealtime, dataStamp])
 
   return state
 }
@@ -727,9 +729,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({layout}) => {
             </div>
             <div
               style={{
-                height: '100%',
+                height: 'calc(100% - 28px)',
                 width: '100%',
-                padding: "0px 20px",
+                padding: '0px 20px 20px 20px',
               }}
             >
               {cell.type === 'plot' ? (
@@ -738,6 +740,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({layout}) => {
                   keys={asArray(cell.field)}
                   options={plotOptionsFor(cell)}
                 />
+              ) : undefined}
+              {cell.type === 'geo' ? (
+                <ManagedMapReact keys={[cell.latField, cell.lonField]} />
               ) : undefined}
             </div>
           </div>
@@ -751,7 +756,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({layout}) => {
  * returns fields for given layout
  */
 const getFields = (layout: DashboardLayoutDefiniton): string[] => {
-  throw new Error('not implemented!')
+  const fields = new Set<string>()
+
+  layout.cells.forEach((cell) => {
+    if (cell.type === 'plot') {
+      asArray(cell.field).forEach(f=>fields.add(f))
+    } else if (cell.type === 'geo') {
+      fields.add(cell.latField)
+      fields.add(cell.lonField)
+    }
+  })
+
+  return Array.from(fields)
 }
 
 const DynamicDashboardPage: FunctionComponent<
@@ -768,9 +784,9 @@ const DynamicDashboardPage: FunctionComponent<
   const isRealtime = getIsRealtime(timeStart)
 
   // TODO: get fields from dashboard definitions
-  const fields: string[] = []
+  const fields: string[] = getFields(layout)
 
-  const {loading, manager} = useSource(deviceId, timeStart, fields)
+  const {loading, manager} = useSource(deviceId, timeStart, fields, dataStamp)
 
   // Default time selected to Past when mqtt not configured
   useEffect(() => {

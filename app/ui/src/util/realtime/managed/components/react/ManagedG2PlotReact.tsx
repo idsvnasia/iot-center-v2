@@ -1,9 +1,9 @@
 import {Gauge, Line} from '@antv/g2plot'
 import React, {useContext, useEffect, useRef} from 'react'
-import {DataManager} from '..'
-import {G2PlotOptionsNoData, throwReturn} from '../..'
-import {ManagedG2Plot, PlotConstructor} from '../ManagedG2Plot'
-import {DataManagerContext} from './DataManagerContext'
+import {DataManager} from '../..'
+import {G2PlotOptionsNoData, throwReturn} from '../../..'
+import {ManagedG2Plot, PlotConstructor} from '../../components/ManagedG2Plot'
+import {DataManagerContext} from '../../DataManagerContext'
 
 type ManagedG2PlotReactParams = {
   plotType: 'gauge' | 'line' | PlotConstructor
@@ -36,12 +36,12 @@ export const ManagedG2PlotReact: React.FC<ManagedG2PlotReactParams> = ({
             )
         : plotType
 
-    plotRef.current = new ManagedG2Plot(manager, ctor, elementRef.current)
+    plotRef.current = new ManagedG2Plot(manager, elementRef.current, ctor)
   }, [plotType])
 
   useEffect(() => {
     if (!plotRef.current) return
-    plotRef.current.setManager(manager)
+    plotRef.current.manager = manager
   }, [manager])
 
   useEffect(() => {
