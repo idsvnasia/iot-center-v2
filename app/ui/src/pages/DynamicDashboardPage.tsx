@@ -1,30 +1,33 @@
-import {Button, Card, Select, Tooltip} from 'antd'
-import {Line, Gauge, GaugeOptions, LineOptions, Datum} from '@antv/g2plot'
-import React, {FunctionComponent, useEffect, useState} from 'react'
-import PageContent, {Message} from './PageContent'
-import {useRef} from 'react'
-import {useCallback} from 'react'
-import {
-  DiagramEntryPoint,
-  G2Plot,
-  G2PlotUpdater,
-  TimePoint,
-  useMap,
-  useWebSocket,
-} from '../util/realtime'
-import {VIRTUAL_DEVICE} from '../App'
+import React, {
+  FunctionComponent,
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+} from 'react'
 import {RouteComponentProps} from 'react-router-dom'
-import {DeviceInfo} from './DevicesPage'
-import {IconRefresh, IconSettings} from '../styles/icons'
-import {Table as GiraffeTable} from '@influxdata/giraffe'
-import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
-import {queryTable} from '../util/queryTable'
-import {colorLink, colorPrimary} from '../styles/colors'
-import {asArray, DataManager, MinAndMax} from '../util/realtime/managed'
-import DataManagerContextProvider from '../util/realtime/managed/DataManagerContext'
+import {Button, Select, Tooltip} from 'antd'
+import PageContent, {Message} from './PageContent'
+import {IconRefresh, IconSettings, colorLink, colorPrimary} from '../styles'
 import ReactGridLayoutFixed from '../util/ReactGridLayoutFixed'
-import {ManagedG2PlotReact} from '../util/realtime/managed/components/react/ManagedG2PlotReact'
-import {ManagedMapReact} from '../util/realtime/managed/components/react/ManagedMapReact'
+
+import {flux, fluxDuration, InfluxDB} from '@influxdata/influxdb-client'
+import {GaugeOptions, LineOptions, Datum} from '@antv/g2plot'
+import {Table as GiraffeTable} from '@influxdata/giraffe'
+import {VIRTUAL_DEVICE} from '../App'
+import {DeviceInfo} from './DevicesPage'
+import {DiagramEntryPoint, useWebSocket} from '../util/realtime'
+import {queryTable} from '../util/queryTable'
+import {
+  asArray,
+  DataManager,
+  MinAndMax,
+  DataManagerContextProvider,
+} from '../util/realtime/managed'
+import {
+  ManagedG2PlotReact,
+  ManagedMapReact,
+} from '../util/realtime/managed/components/react'
 
 //TODO: file upload JSON definition of dashboardu with JSON schema for validation
 //TODO: svg upload with escape for script for secure usage
@@ -53,7 +56,7 @@ type DashboardCellLayout = {
 
 // TODO: optional fields - defaults filling functions
 
-type DashboardCellType = 'svg' | 'plot' | 'geo'
+// type DashboardCellType = 'svg' | 'plot' | 'geo'
 
 type DashboardCellSvg = {
   type: 'svg'
@@ -76,7 +79,7 @@ type DashboardCellGeo = {
   Past: DashboardCellGeoSet
 }
 
-type DashboardCellPlotType = 'gauge' | 'line'
+// type DashboardCellPlotType = 'gauge' | 'line'
 
 type DashboardCellPlotGauge = {
   type: 'plot'
@@ -216,7 +219,7 @@ const layout: DashboardLayoutDefiniton = {
     {
       type: 'plot',
       plotType: 'line',
-      field: ['Temperature', "CO2"],
+      field: ['Temperature', 'CO2'],
       label: 'Temperature',
       layout: {x: 0, y: 6, w: 12, h: 3},
     },
@@ -269,11 +272,6 @@ interface DeviceConfig {
   influx_token: string
   influx_bucket: string
   id: string
-}
-
-interface DeviceData {
-  config: DeviceConfig
-  measurementsTable?: GiraffeTable
 }
 
 const fetchDeviceConfig = async (deviceId: string): Promise<DeviceConfig> => {
@@ -409,16 +407,6 @@ const plotOptionsFor = (
   throw `Invalid plot cell type! ${JSON.stringify((opts as any)?.plotType)}`
 }
 
-/** Returns list of keys present in data. */
-const getFieldsOfData = (data: DiagramEntryPoint[]) => {
-  const keysObj: Record<string, true> = {}
-  for (let i = data.length; i--; ) {
-    const entry = data[i]
-    keysObj[entry.key] = true
-  }
-  return Object.getOwnPropertyNames(keysObj)
-}
-
 // #region Realtime
 
 /** Data returned from websocket in line-protocol-like shape */
@@ -531,43 +519,6 @@ const giraffeTableToDiagramEntryPoints = (
   return data
 }
 
-/**
- * Extracts latlon pairs and return them as TimePoint for realtime-map
- */
-const diagramEntryPointsToMapTimePoints = (
-  data: DiagramEntryPoint[]
-): TimePoint[] => {
-  const lats = data.filter((x) => x.key === 'Lat')
-  const lons = data.filter((x) => x.key === 'Lon')
-  const pointHashMap: Map<number, TimePoint> = new Map()
-  const points: TimePoint[] = new Array(lats.length)
-
-  for (let i = lats.length; i--; ) {
-    const {time, value} = lats[i]
-    const point: TimePoint = [value, undefined as any, time]
-    pointHashMap.set(time, point)
-    points[i] = point
-  }
-
-  for (let i = lons.length; i--; ) {
-    const {time, value} = lons[i]
-    const entry = pointHashMap.get(time)
-    if (entry) entry[1] = value
-  }
-
-  let length = points.length
-  for (let i = length; i--; ) {
-    if (points[i][1] === undefined) {
-      length--
-      points[i] = points[length]
-    }
-  }
-  points.length = length
-  points.sort((a, b) => a[2] - b[2])
-
-  return points
-}
-
 // #endregion Realtime
 
 /**
@@ -611,7 +562,12 @@ interface Props {
 }
 
 /** Selects source based on timeStart, normalize and feed data into DataManager */
-const useSource = (deviceId: string, timeStart: string, fields: string[], dataStamp: number) => {
+const useSource = (
+  deviceId: string,
+  timeStart: string,
+  fields: string[],
+  dataStamp: number
+) => {
   const [state, setState] = useState({
     loading: false,
     manager: new DataManager(),
@@ -633,7 +589,7 @@ const useSource = (deviceId: string, timeStart: string, fields: string[], dataSt
 
   useEffect(() => {
     state.manager.retentionTimeMs = retentionTimeMs
-  }, [retentionTimeMs])
+  }, [retentionTimeMs, state.manager])
 
   useEffect(() => {
     setSubscriptions(
@@ -643,9 +599,12 @@ const useSource = (deviceId: string, timeStart: string, fields: string[], dataSt
     )
   }, [deviceId, isRealtime])
 
-  const updateData = useCallback((points: DiagramEntryPoint[] | undefined) => {
-    if (points?.length) state.manager.updateData(points)
-  }, [])
+  const updateData = useCallback(
+    (points: DiagramEntryPoint[] | undefined) => {
+      if (points?.length) state.manager.updateData(points)
+    },
+    [state.manager]
+  )
 
   /** Clear data and resets received data fields state */
   const clearData = useRef(() => {
@@ -690,7 +649,15 @@ const useSource = (deviceId: string, timeStart: string, fields: string[], dataSt
 
     // fetch data only if not in realtime mode
     if (!isRealtime) fetchData()
-  }, [deviceId, timeStart, isRealtime, dataStamp])
+  }, [
+    deviceId,
+    timeStart,
+    isRealtime,
+    dataStamp,
+    clearData,
+    fields,
+    updateData,
+  ])
 
   return state
 }
@@ -760,7 +727,7 @@ const getFields = (layout: DashboardLayoutDefiniton): string[] => {
 
   layout.cells.forEach((cell) => {
     if (cell.type === 'plot') {
-      asArray(cell.field).forEach(f=>fields.add(f))
+      asArray(cell.field).forEach((f) => fields.add(f))
     } else if (cell.type === 'geo') {
       fields.add(cell.latField)
       fields.add(cell.lonField)
@@ -780,7 +747,7 @@ const DynamicDashboardPage: FunctionComponent<
   const [devices, setDevices] = useState<DeviceInfo[] | undefined>(undefined)
   const [timeStart, setTimeStart] = useState(timeOptionsRealtime[0].value)
 
-  const isVirtualDevice = deviceId === VIRTUAL_DEVICE
+  // const isVirtualDevice = deviceId === VIRTUAL_DEVICE
   const isRealtime = getIsRealtime(timeStart)
 
   // TODO: get fields from dashboard definitions

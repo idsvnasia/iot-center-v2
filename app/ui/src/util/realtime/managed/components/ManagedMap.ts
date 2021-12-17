@@ -1,20 +1,25 @@
-import React, { useEffect, useRef } from 'react'
 import * as leaflet from 'leaflet'
-import { AntPath, LatLng } from 'leaflet-ant-path'
-import { ManagedComponent } from "../ManagedComponent"
-import { DataManagerOnChangeEvent } from "../DataManager"
-import { DataManager, LatLonTime } from ".."
+import {AntPath, LatLng} from 'leaflet-ant-path'
+import {ManagedComponent} from '../ManagedComponent'
+import {DataManager} from '..'
 
 const calculateAngleFromLatlon = (p1: LatLng, p2: LatLng) =>
   360 -
   ((Math.atan2(p2[0] - p1[0], p2[1] - p1[1]) * (180 / Math.PI) + 360) % 360)
 
-const { PI, asin, sin, cos, sqrt, pow } = Math;
+const {PI, asin, sin, cos, sqrt, pow} = Math
 const EARTH_RADIUS_KM = 6371
-const latLonDist = (p1: LatLng, p2: LatLng) => asin(
-  sqrt(pow(sin(((p2[0] * PI) / 180 - (p1[0] * PI) / 180) / 2), 2) + cos(p1[0]) * cos(p2[0]) * pow(sin(((p2[1] * PI) / 180 - (p1[1] * PI) / 180) / 2), 2)))
-  * EARTH_RADIUS_KM * 2
-
+const latLonDist = (p1: LatLng, p2: LatLng) =>
+  asin(
+    sqrt(
+      pow(sin(((p2[0] * PI) / 180 - (p1[0] * PI) / 180) / 2), 2) +
+        cos(p1[0]) *
+          cos(p2[0]) *
+          pow(sin(((p2[1] * PI) / 180 - (p1[1] * PI) / 180) / 2), 2)
+    )
+  ) *
+  EARTH_RADIUS_KM *
+  2
 
 // view will center on new point when new point is this far from last centered
 const VIEW_CENTERING_THRESHOLD_DISTANCE_KM = 0.01
@@ -52,7 +57,7 @@ export class ManagedMap extends ManagedComponent {
   private rafHandle = -1
   private _update() {
     if (!this._path || !this._map || !this._marker) return
-    
+
     const _points = this.manager.getLatLonTime()
     this._path.setLatLngs(_points as any)
 
@@ -64,7 +69,7 @@ export class ManagedMap extends ManagedComponent {
           !this._lastPoint ||
           !this._lastPointTime ||
           latLonDist(this._lastPoint, last) >
-          VIEW_CENTERING_THRESHOLD_DISTANCE_KM ||
+            VIEW_CENTERING_THRESHOLD_DISTANCE_KM ||
           this._lastPointTime < Date.now() - VIEW_CENTERING_THRESHOLD_MS
         ) {
           this._map.setView(last, this._map.getZoom(), {
@@ -84,7 +89,8 @@ export class ManagedMap extends ManagedComponent {
       } catch (e: any) {
         // manipulating map properties can throw an error when map no longer exist
         console.warn(
-          `error thrown by leaflet map: ${e?.message ?? e ?? 'unspecific error'
+          `error thrown by leaflet map: ${
+            e?.message ?? e ?? 'unspecific error'
           }`
         )
       }
@@ -102,7 +108,7 @@ export class ManagedMap extends ManagedComponent {
       ? (_points[_points.length - 1] as any)
       : [51.4921374, -0.1928784]
     const map = leaflet
-      .map(this.element, { scrollWheelZoom: false, dragging: this._dragable })
+      .map(this.element, {scrollWheelZoom: false, dragging: this._dragable})
       .setView(point, this._zoom)
 
     leaflet
@@ -132,11 +138,11 @@ export class ManagedMap extends ManagedComponent {
     this.update()
   }
 
-  onDataChanged(e: DataManagerOnChangeEvent): void {
-    this.update();
+  onDataChanged(/* e: DataManagerOnChangeEvent */): void {
+    this.update()
   }
 
   constructor(manager: DataManager, element: HTMLElement) {
-    super(manager, element);
+    super(manager, element)
   }
 }

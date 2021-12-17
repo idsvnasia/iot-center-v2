@@ -1,3 +1,4 @@
+// todo: constant color, convert naming to UPPER_SNAKE_CASE
 export const colorMainBg = '#13002d'
 export const colorText = '#616372'
 export const colorBodyBg1 = '#f6f6f8'

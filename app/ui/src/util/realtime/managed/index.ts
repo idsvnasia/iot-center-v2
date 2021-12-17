@@ -1,3 +1,4 @@
-export * from "./utils"
-export * from "./DataManager"
-export * from "./DiagramEntryPoint"
+export * from './DataManager'
+export * from './utils'
+export * from './DiagramEntryPoint'
+export * from './DataManagerContext'

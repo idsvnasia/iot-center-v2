@@ -133,6 +133,6 @@ export const useRafOnce = (callback: () => void): (() => void) => {
 /**
  * helper for throwing error from expression
  */
-export const throwReturn = <T,>(msg: string): NonNullable<T> => {
+export const throwReturn = <T>(msg: string): NonNullable<T> => {
   throw new Error(msg)
 }

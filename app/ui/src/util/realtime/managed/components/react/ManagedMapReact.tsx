@@ -1,25 +1,22 @@
-import {Gauge, Line} from '@antv/g2plot'
 import React, {useContext, useEffect, useRef} from 'react'
-import {DataManager} from '../..'
-import {G2PlotOptionsNoData, throwReturn} from '../../..'
-import {ManagedG2Plot, PlotConstructor} from '../ManagedG2Plot'
-import {DataManagerContext} from '../../DataManagerContext'
-import { ManagedMap } from "../ManagedMap"
+import {DataManagerContext} from '../..'
+import {ManagedMap} from '../ManagedMap'
 
 type ManagedMapReactParams = {
   keys: [string, string]
 }
 
-export const ManagedMapReact: React.FC<ManagedMapReactParams> = ({
-  keys,
-}) => {
+export const ManagedMapReact: React.FC<ManagedMapReactParams> = ({keys}) => {
   const elementRef = useRef<HTMLDivElement>(null)
-  const element = <div
-  style={{
-    width: '100%',
-    height: '100%',
-  }}
-  ref={elementRef} />
+  const element = (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+      }}
+      ref={elementRef}
+    />
+  )
 
   const manager = useContext(DataManagerContext)
 
@@ -29,11 +26,11 @@ export const ManagedMapReact: React.FC<ManagedMapReactParams> = ({
     if (!elementRef.current) return
 
     mapRef.current = new ManagedMap(manager, elementRef.current)
-  }, [])
+  }, [manager])
 
   useEffect(() => {
     if (!mapRef.current) return
-    mapRef.current.manager = (manager)
+    mapRef.current.manager = manager
   }, [manager])
 
   useEffect(() => {
@@ -41,7 +38,7 @@ export const ManagedMapReact: React.FC<ManagedMapReactParams> = ({
     mapRef.current.keys = keys
   }, [keys])
 
-  useEffect(()=>{
+  useEffect(() => {
     mapRef.current?.render?.()
   })
 

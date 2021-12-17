@@ -19,7 +19,7 @@ import DevicePage from './pages/DevicePage'
 import NotFoundPage from './pages/NotFoundPage'
 import DashboardPage from './pages/DashboardPage'
 import RealTimePage from './pages/RealTimePage'
-import DynamicDashboardPage from "./pages/DynamicDashboardPage"
+import DynamicDashboardPage from './pages/DynamicDashboardPage'
 
 import {
   IconDashboard,
@@ -29,7 +29,6 @@ import {
   IconRealtimeDashboard,
   IconVirtualDevice,
 } from './styles/icons'
-
 
 export const VIRTUAL_DEVICE = 'virtual_device'
 
@@ -220,7 +219,10 @@ const App: FunctionComponent<RouteComponentProps> = (props) => {
             exact
             path="/dynamic/:deviceId"
             render={(props) => (
-              <DynamicDashboardPage {...props} {...{helpCollapsed, mqttEnabled}} />
+              <DynamicDashboardPage
+                {...props}
+                {...{helpCollapsed, mqttEnabled}}
+              />
             )}
           />
           <Route path="*" component={NotFoundPage} />

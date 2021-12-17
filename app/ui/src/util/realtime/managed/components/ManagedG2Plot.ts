@@ -1,17 +1,12 @@
-import { Gauge, Plot } from "@antv/g2plot"
-import { DataManager, DataManagerOnChangeEvent, linearScale } from ".."
-import { ManagedComponent } from "../ManagedComponent"
+import {Gauge, Plot} from '@antv/g2plot'
+import {DataManager, DataManagerOnChangeEvent, linearScale, MASK_TIME} from '..'
+import {ManagedComponent} from '../ManagedComponent'
 
 export type PlotConstructor = new (...args: any[]) => Plot<any>
 export type G2PlotOptionsNoData<T> = Omit<
   ConstructorParameters<new (...args: any[]) => Plot<T>>[1],
   'data' | 'percent'
 >
-
-const maskTime = 'hh:mm:ss'
-const maskDate = 'DD/MM/YY'
-const maskDateTime = `${maskDate} ${maskTime} `
-
 
 const g2PlotDefaults = {
   data: [],
@@ -22,23 +17,23 @@ const g2PlotDefaults = {
   animation: false,
   xAxis: {
     type: 'time',
-    mask: maskTime,
+    mask: MASK_TIME,
     nice: false,
     tickInterval: 4,
   },
 }
 
 const containsAtLeastOneSameValue = <T>(arr: T[], arr2: T[]) => {
-  for (let i = arr.length; i--;) {
-    for (let j = arr2.length; j--;) {
-      if (arr[i] === arr[j])
-        return true;
+  for (let i = arr.length; i--; ) {
+    for (let j = arr2.length; j--; ) {
+      if (arr[i] === arr[j]) return true
     }
   }
-  return false;
+  return false
 }
 
-const mapValueToRange = (min: number, max: number, value: number) => (value - min) / (max - min);
+const mapValueToRange = (min: number, max: number, value: number) =>
+  (value - min) / (max - min)
 
 export class ManagedG2Plot extends ManagedComponent {
   public ctor: PlotConstructor
@@ -47,7 +42,7 @@ export class ManagedG2Plot extends ManagedComponent {
   private _plot?: InstanceType<PlotConstructor>
 
   private _getData() {
-    const manager = this._manager;
+    const manager = this._manager
 
     if (this.ctor !== Gauge) {
       return manager.calculateSimplifyedData(this.keys)
@@ -56,15 +51,14 @@ export class ManagedG2Plot extends ManagedComponent {
       const max = this.options?.max as number | undefined
       const value = manager.getLatestDataPoint(this.keys)?.value ?? 0
 
-      if (min == null || max == null)
-        return value
+      if (min == null || max == null) return value
       else {
         return mapValueToRange(min, max, value)
       }
     }
   }
 
-  render() {
+  render(): void {
     this._plot?.destroy?.()
     this._plot = new this.ctor(this.element, this._getOptions())
     this._plot.render()
@@ -73,11 +67,11 @@ export class ManagedG2Plot extends ManagedComponent {
   /**
    * redraw G2Plot with current options
    */
-  redraw() {
-    cancelAnimationFrame(this._redrawHandle);
+  redraw(): void {
+    cancelAnimationFrame(this._redrawHandle)
     this._redrawHandle = requestAnimationFrame(this._redraw.bind(this))
   }
-  private _redrawHandle = -1;
+  private _redrawHandle = -1
   private _redraw() {
     this._plot?.update?.(this._getOptions())
   }
@@ -85,34 +79,29 @@ export class ManagedG2Plot extends ManagedComponent {
   /**
    * redraw G2Plot with current data
    */
-  invalidate() {
-    cancelAnimationFrame(this._invalidateHandle);
+  invalidate(): void {
+    cancelAnimationFrame(this._invalidateHandle)
     this._invalidateHandle = requestAnimationFrame(this._invalidate.bind(this))
   }
-  private _invalidateHandle = -1;
+  private _invalidateHandle = -1
   private _invalidate() {
-    this._plot?.changeData?.(
-      this._getData()
-    )
+    this._plot?.changeData?.(this._getData())
   }
 
   private _getOptions() {
-    const manager = this._manager;
+    const manager = this._manager
 
-    const mask = manager.getMask(this.keys);
-    const retentionUsed = manager.retentionUsed;
-    const retentionTimeMs = manager.retentionTimeMs;
+    const mask = manager.getMask(this.keys)
+    const retentionUsed = manager.retentionUsed
+    const retentionTimeMs = manager.retentionTimeMs
 
-    const dataTimeMinMax = manager.getDataTimeMinMax(this.keys);
+    const dataTimeMinMax = manager.getDataTimeMinMax(this.keys)
 
     const now = Date.now()
 
-    const data = this._getData();
+    const data = this._getData()
 
-    const dataObj =
-      this.ctor !== Gauge
-        ? { data }
-        : { percent: data }
+    const dataObj = this.ctor !== Gauge ? {data} : {percent: data}
 
     const res = {
       ...g2PlotDefaults,
@@ -148,32 +137,37 @@ export class ManagedG2Plot extends ManagedComponent {
       ...dataObj,
     }
 
-    return res;
+    return res
   }
 
-  update() {
+  update(): void {
     // if (this.ctor === Gauge) this.invalidate()
-    // else 
+    // else
     this.redraw()
   }
 
-  onDataChanged(e: DataManagerOnChangeEvent) {
+  onDataChanged(e: DataManagerOnChangeEvent): void {
     if (this.ctor === Gauge) {
       if (!containsAtLeastOneSameValue(this.keys, e.lastValueChangedKeys))
-        return;
+        return
     } else {
-      if (!containsAtLeastOneSameValue(this.keys, e.changedKeys)
-        && !e.retentionChanged
-        && !e.timeWindowChanged
-      ) return;
+      if (
+        !containsAtLeastOneSameValue(this.keys, e.changedKeys) &&
+        !e.retentionChanged &&
+        !e.timeWindowChanged
+      )
+        return
     }
 
-    this.update();
+    this.update()
   }
 
-  constructor(manager: DataManager, element: HTMLElement, ctor: PlotConstructor) {
-    super(manager, element);
-    this.ctor = ctor;
+  constructor(
+    manager: DataManager,
+    element: HTMLElement,
+    ctor: PlotConstructor
+  ) {
+    super(manager, element)
+    this.ctor = ctor
   }
 }
-
